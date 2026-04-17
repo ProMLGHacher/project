@@ -1,0 +1,83 @@
+networks:
+  app:
+    driver: bridge
+
+services:
+  backend:
+    image: golang:1.26
+    working_dir: /workspace/backend
+    command: >
+      /bin/sh -lc
+      "/usr/local/go/bin/go mod download &&
+      /usr/local/go/bin/go run ./cmd/server"
+    environment:
+      HTTP_ADDR: "${HTTP_ADDR:-:8080}"
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
+      INVITE_SECRET: "${INVITE_SECRET}"
+      TURN_URL: "${TURN_URL}"
+      TURN_TLS_URL: "${TURN_TLS_URL}"
+      TURN_USERNAME: "${TURN_USERNAME}"
+      TURN_PASSWORD: "${TURN_PASSWORD}"
+      ICE_PUBLIC_IP: "${ICE_PUBLIC_IP}"
+      ICE_UDP_PORT_MIN: "${ICE_UDP_PORT_MIN}"
+      ICE_UDP_PORT_MAX: "${ICE_UDP_PORT_MAX}"
+    expose:
+      - "8080"
+    ports:
+      - "${ICE_UDP_PORT_MIN}-${ICE_UDP_PORT_MAX}:${ICE_UDP_PORT_MIN}-${ICE_UDP_PORT_MAX}/udp"
+    volumes:
+      - ../backend:/workspace/backend
+    depends_on:
+      - turn
+    networks:
+      - app
+
+  web:
+    image: node:24
+    working_dir: /workspace/web
+    command: >
+      /bin/sh -lc
+      "npm install &&
+      npm run dev -- --host 0.0.0.0"
+    expose:
+      - "5173"
+    volumes:
+      - ../web:/workspace/web
+    networks:
+      - app
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - web
+      - backend
+    ports:
+      - "${GATEWAY_PORT:-8023}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - app
+
+  turn:
+    image: coturn/coturn:4.6.3
+    entrypoint:
+      - /bin/sh
+      - /etc/coturn/render-turn-config.sh
+    environment:
+      TURN_USERNAME: "${TURN_USERNAME}"
+      TURN_PASSWORD: "${TURN_PASSWORD}"
+      TURN_REALM: "${TURN_REALM}"
+      TURN_EXTERNAL_IP: "${TURN_EXTERNAL_IP}"
+      TURN_PORT: "${TURN_PORT}"
+      TURN_TLS_PORT: "${TURN_TLS_PORT}"
+      TURN_RELAY_PORT_MIN: "${TURN_RELAY_PORT_MIN}"
+      TURN_RELAY_PORT_MAX: "${TURN_RELAY_PORT_MAX}"
+    ports:
+      - "${TURN_PORT}:3478/udp"
+      - "${TURN_PORT}:3478/tcp"
+      - "${TURN_TLS_PORT}:5349/tcp"
+      - "${TURN_RELAY_PORT_MIN}-${TURN_RELAY_PORT_MAX}:${TURN_RELAY_PORT_MIN}-${TURN_RELAY_PORT_MAX}/udp"
+    volumes:
+      - ./render-turn-config.sh:/etc/coturn/render-turn-config.sh:ro
+    networks:
+      - app
