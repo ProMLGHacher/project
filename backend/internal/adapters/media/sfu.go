@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/araik/codex-webrtc/project/backend/internal/domain"
 	"github.com/araik/codex-webrtc/project/backend/internal/protocol"
 	"github.com/pion/rtp"
@@ -43,10 +45,13 @@ type SubscriberPeer struct {
 }
 
 type SourceTrack struct {
+	ID            uint64
 	RoomID        string
 	ParticipantID string
 	Kind          domain.SlotKind
 	Track         *webrtc.TrackLocalStaticRTP
+	Remote        *webrtc.TrackRemote
+	stopPLI       chan struct{}
 }
 
 type SFU struct {
@@ -57,6 +62,7 @@ type SFU struct {
 	publishers  map[string]*PublisherPeer
 	subscribers map[string]*SubscriberPeer
 	sources     map[participantSlotKey]*SourceTrack
+	nextSourceID uint64
 }
 
 func NewSFU(api *webrtc.API, emitter SignalEmitter, lookup SessionLookup) *SFU {
@@ -339,12 +345,20 @@ func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, r
 	key := participantSlotKey{ParticipantID: participantID, Kind: kind}
 
 	s.mu.Lock()
+	if existing, ok := s.sources[key]; ok && existing.stopPLI != nil {
+		close(existing.stopPLI)
+	}
+	s.nextSourceID++
 	s.sources[key] = &SourceTrack{
+		ID:            s.nextSourceID,
 		RoomID:        roomID,
 		ParticipantID: participantID,
 		Kind:          kind,
 		Track:         local,
+		Remote:        remote,
+		stopPLI:       make(chan struct{}),
 	}
+	source := s.sources[key]
 
 	subscribers := make([]*SubscriberPeer, 0, len(s.subscribers))
 	for _, subscriber := range s.subscribers {
@@ -355,7 +369,7 @@ func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, r
 	s.mu.Unlock()
 
 	for _, subscriber := range subscribers {
-		if err := s.addSourceToSubscriber(subscriber, s.sources[key]); err != nil {
+		if err := s.addSourceToSubscriber(subscriber, source); err != nil {
 			return err
 		}
 		if offer, err := s.CreateSubscriberOffer(subscriber.ParticipantID, false); err == nil && offer.Type != 0 {
@@ -369,11 +383,16 @@ func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, r
 		}
 	}
 
+	if remote.Kind() == webrtc.RTPCodecTypeVideo {
+		s.startPLILoop(participantID, source)
+		s.requestKeyframe(participantID, source)
+	}
+
 	go func() {
 		for {
 			packet, _, err := remote.ReadRTP()
 			if err != nil {
-				_ = s.unpublish(participantID, kind)
+				_ = s.unpublishSource(source)
 				return
 			}
 			_ = local.WriteRTP(packet)
@@ -400,14 +419,37 @@ func (s *SFU) addSourceToSubscriber(subscriber *SubscriberPeer, source *SourceTr
 
 	subscriber.Senders[key] = sender
 	log.Printf("[sfu] add-source-to-subscriber subscriber_id=%s source_participant_id=%s kind=%s", subscriber.ParticipantID, source.ParticipantID, source.Kind)
+	go s.drainSenderRTCP(subscriber.ParticipantID, source, sender)
+	if source.Remote != nil && source.Remote.Kind() == webrtc.RTPCodecTypeVideo {
+		s.requestKeyframe(source.ParticipantID, source)
+	}
 	return nil
 }
 
 func (s *SFU) unpublish(participantID string, kind domain.SlotKind) error {
-	log.Printf("[sfu] unpublish participant_id=%s kind=%s", participantID, kind)
 	key := participantSlotKey{ParticipantID: participantID, Kind: kind}
+	s.mu.RLock()
+	source, exists := s.sources[key]
+	s.mu.RUnlock()
+	if !exists {
+		return nil
+	}
 
+	return s.unpublishSource(source)
+}
+
+func (s *SFU) unpublishSource(source *SourceTrack) error {
+	log.Printf("[sfu] unpublish participant_id=%s kind=%s source_id=%d", source.ParticipantID, source.Kind, source.ID)
+	key := participantSlotKey{ParticipantID: source.ParticipantID, Kind: source.Kind}
 	s.mu.Lock()
+	current, exists := s.sources[key]
+	if !exists || current.ID != source.ID {
+		s.mu.Unlock()
+		return nil
+	}
+	if current.stopPLI != nil {
+		close(current.stopPLI)
+	}
 	delete(s.sources, key)
 
 	targets := make([]*SubscriberPeer, 0, len(s.subscribers))
@@ -484,4 +526,67 @@ func clonePacket(packet *rtp.Packet) *rtp.Packet {
 	}
 	clone := *packet
 	return &clone
+}
+
+func (s *SFU) drainSenderRTCP(subscriberID string, source *SourceTrack, sender *webrtc.RTPSender) {
+	for {
+		packets, _, err := sender.ReadRTCP()
+		if err != nil {
+			return
+		}
+
+		if source.Remote == nil || source.Remote.Kind() != webrtc.RTPCodecTypeVideo {
+			continue
+		}
+
+		for _, packet := range packets {
+			switch packet.(type) {
+			case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
+				log.Printf("[sfu] rtcp-keyframe-request subscriber_id=%s source_participant_id=%s kind=%s", subscriberID, source.ParticipantID, source.Kind)
+				s.requestKeyframe(source.ParticipantID, source)
+			}
+		}
+	}
+}
+
+func (s *SFU) startPLILoop(participantID string, source *SourceTrack) {
+	if source.stopPLI == nil || source.Remote == nil || source.Remote.Kind() != webrtc.RTPCodecTypeVideo {
+		return
+	}
+
+	go func(stop <-chan struct{}) {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.requestKeyframe(participantID, source)
+			case <-stop:
+				return
+			}
+		}
+	}(source.stopPLI)
+}
+
+func (s *SFU) requestKeyframe(participantID string, source *SourceTrack) {
+	if source.Remote == nil || source.Remote.Kind() != webrtc.RTPCodecTypeVideo {
+		return
+	}
+
+	s.mu.RLock()
+	publisher := s.publishers[participantID]
+	s.mu.RUnlock()
+	if publisher == nil {
+		return
+	}
+
+	if err := publisher.PC.WriteRTCP([]rtcp.Packet{
+		&rtcp.PictureLossIndication{MediaSSRC: uint32(source.Remote.SSRC())},
+	}); err != nil {
+		log.Printf("[sfu] request-keyframe-failed participant_id=%s kind=%s err=%v", participantID, source.Kind, err)
+		return
+	}
+
+	log.Printf("[sfu] request-keyframe participant_id=%s kind=%s ssrc=%d", participantID, source.Kind, source.Remote.SSRC())
 }
