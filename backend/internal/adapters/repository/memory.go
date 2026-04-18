@@ -42,20 +42,28 @@ func (r *InMemoryRoomRepository) FindByID(_ context.Context, roomID string) (*do
 }
 
 type InMemorySessionRepository struct {
-	mu       sync.RWMutex
-	sessions map[string]*domain.PeerSession
+	mu                   sync.RWMutex
+	sessions             map[string]*domain.PeerSession
+	sessionByParticipant map[string]string
 }
 
 func NewInMemorySessionRepository() *InMemorySessionRepository {
 	return &InMemorySessionRepository{
-		sessions: map[string]*domain.PeerSession{},
+		sessions:             map[string]*domain.PeerSession{},
+		sessionByParticipant: map[string]string{},
 	}
 }
 
 func (r *InMemorySessionRepository) Save(_ context.Context, session *domain.PeerSession) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if previousSessionID, exists := r.sessionByParticipant[session.ParticipantID]; exists && previousSessionID != session.ID {
+		delete(r.sessions, previousSessionID)
+	}
+
 	r.sessions[session.ID] = session
+	r.sessionByParticipant[session.ParticipantID] = session.ID
 	return nil
 }
 
@@ -74,6 +82,14 @@ func (r *InMemorySessionRepository) FindByID(_ context.Context, sessionID string
 func (r *InMemorySessionRepository) Delete(_ context.Context, sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	session, exists := r.sessions[sessionID]
+	if exists {
+		if currentSessionID, ok := r.sessionByParticipant[session.ParticipantID]; ok && currentSessionID == sessionID {
+			delete(r.sessionByParticipant, session.ParticipantID)
+		}
+	}
+
 	delete(r.sessions, sessionID)
 	return nil
 }

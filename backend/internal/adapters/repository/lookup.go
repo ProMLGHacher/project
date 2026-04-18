@@ -21,12 +21,9 @@ func NewSessionLookup(rooms *InMemoryRoomRepository, sessions *InMemorySessionRe
 func (l *SessionLookup) SessionIDByParticipant(_ context.Context, participantID string) (string, bool) {
 	l.sessions.mu.RLock()
 	defer l.sessions.mu.RUnlock()
-	for _, session := range l.sessions.sessions {
-		if session.ParticipantID == participantID {
-			return session.ID, true
-		}
-	}
-	return "", false
+
+	sessionID, ok := l.sessions.sessionByParticipant[participantID]
+	return sessionID, ok
 }
 
 func (l *SessionLookup) ParticipantsInRoom(_ context.Context, roomID string) []string {
