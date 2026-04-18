@@ -1,6 +1,7 @@
 import { SignalingClient, type SignalingState } from '@/lib/signaling'
 import type {
   CandidatePayload,
+  ErrorPayload,
   ICEServerConfig,
   IceRestartPayload,
   RoomSnapshot,
@@ -10,6 +11,7 @@ import type {
   SlotKind,
   SlotUpdatedPayload
 } from '@/features/protocol/types'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 
 type LocalPeerKind = 'publisher' | 'subscriber'
 
@@ -77,6 +79,7 @@ export class ConferenceClient {
 
   async start(options: StartOptions) {
     try {
+      logInfo('rtc', 'starting conference client', options)
       this.events.onStateChange('connecting')
       this.signaling.subscribeState((state) => {
         this.signalingState = state
@@ -93,11 +96,13 @@ export class ConferenceClient {
       this.subscriberPc = this.createPeerConnection(options.iceServers, 'subscriber')
       this.reservePublisherSlots()
       this.emitDiagnostics()
+      logInfo('rtc', 'publisher and subscriber peer connections created')
 
       await this.setMicEnabled(options.micEnabled)
       await this.setCameraEnabled(options.cameraEnabled)
       this.allowPublisherNegotiation = true
       await this.negotiatePublisher()
+      logInfo('rtc', 'initial publisher negotiation completed')
     } catch (error) {
       this.captureError(error)
       throw error
@@ -123,6 +128,7 @@ export class ConferenceClient {
       this.publishLocalStream()
       this.sendSlotUpdate('audio', enabled, enabled, Boolean(this.localAudioTrack))
       this.emitDiagnostics()
+      logInfo('rtc', 'microphone toggled', { enabled })
     } catch (error) {
       this.captureError(error)
       throw error
@@ -150,6 +156,7 @@ export class ConferenceClient {
       this.publishLocalStream()
       this.sendSlotUpdate('camera', enabled, enabled, Boolean(this.localCameraTrack))
       this.emitDiagnostics()
+      logInfo('rtc', 'camera toggled', { enabled })
     } catch (error) {
       this.captureError(error)
       throw error
@@ -180,6 +187,7 @@ export class ConferenceClient {
       this.publishLocalStream()
       this.sendSlotUpdate('screen', enabled, enabled, Boolean(this.localScreenTrack))
       this.emitDiagnostics()
+      logInfo('rtc', 'screen share toggled', { enabled })
     } catch (error) {
       this.captureError(error)
       throw error
@@ -205,6 +213,7 @@ export class ConferenceClient {
     this.localPreviewStream = null
     this.events.onLocalStream?.(null)
     this.emitDiagnostics()
+    logInfo('rtc', 'conference client closed')
   }
 
   private createPeerConnection(iceServers: ICEServerConfig[], peer: LocalPeerKind) {
@@ -231,10 +240,12 @@ export class ConferenceClient {
     }
 
     pc.onconnectionstatechange = () => {
+      logInfo('rtc', 'peer connection state changed', { peer, connectionState: pc.connectionState })
       this.emitDiagnostics()
     }
 
     pc.oniceconnectionstatechange = () => {
+      logInfo('rtc', 'peer ice state changed', { peer, iceConnectionState: pc.iceConnectionState })
       this.events.onStateChange(pc.iceConnectionState)
       this.emitDiagnostics()
       if (peer === 'publisher' && (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
@@ -243,6 +254,7 @@ export class ConferenceClient {
     }
 
     pc.onsignalingstatechange = () => {
+      logInfo('rtc', 'peer signaling state changed', { peer, signalingState: pc.signalingState })
       this.emitDiagnostics()
     }
 
@@ -264,6 +276,13 @@ export class ConferenceClient {
         this.remoteStreams.set(participantId, remoteStream)
         this.events.onRemoteTrack(participantId, slotKind, remoteStream)
         this.emitDiagnostics()
+        logInfo('rtc', 'remote track attached', {
+          participantId,
+          slotKind,
+          trackKind: event.track.kind,
+          trackId: event.track.id,
+          streamId: stream?.id ?? 'unknown'
+        })
       }
     }
 
@@ -283,6 +302,7 @@ export class ConferenceClient {
   private async handleSignalMessage(message: SignalEnvelope) {
     this.recordSignal(this.recentSignalsReceived, message.type)
     this.emitDiagnostics()
+    logInfo('rtc', 'handling signal message', { type: message.type, payload: message.payload })
 
     switch (message.type) {
       case 'room.snapshot': {
@@ -342,6 +362,11 @@ export class ConferenceClient {
         this.events.onSlotUpdated(message.payload as SlotUpdatedPayload)
         return
       }
+      case 'error': {
+        const payload = message.payload as ErrorPayload
+        this.captureError(new Error(payload.message))
+        return
+      }
       case 'ice.restart.requested': {
         const payload = message.payload as IceRestartPayload
         if (payload.peer === 'publisher') {
@@ -350,6 +375,7 @@ export class ConferenceClient {
         return
       }
       default:
+        logWarn('rtc', 'ignoring unknown signal message type', { type: message.type })
         return
     }
   }
@@ -391,6 +417,7 @@ export class ConferenceClient {
         }
       })
       this.emitDiagnostics()
+      logInfo('rtc', 'publisher offer sent', { iceRestart })
     } finally {
       this.makingPublisherOffer = false
     }
@@ -421,6 +448,7 @@ export class ConferenceClient {
     this.lastError = message
     this.events.onError?.(message)
     this.emitDiagnostics()
+    logError('rtc', 'captured error', { message, error })
   }
 
   private emitDiagnostics() {

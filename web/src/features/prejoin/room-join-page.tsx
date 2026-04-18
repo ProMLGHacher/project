@@ -1,27 +1,29 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { conferenceApi } from '@/lib/api'
 import { PrejoinModal } from '@/features/prejoin/prejoin-modal'
 import { storeJoinSession } from '@/features/session/session-storage'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import type { InviteMetadata } from '@/features/protocol/types'
+import type { ParticipantRole, RoomMetadata } from '@/features/protocol/types'
 
-export function InvitePage() {
-  const { token = '' } = useParams()
+export function RoomJoinPage() {
+  const { roomId = '' } = useParams()
   const navigate = useNavigate()
-  const [invite, setInvite] = useState<InviteMetadata | null>(null)
+  const [searchParams] = useSearchParams()
+  const requestedRole = searchParams.get('role') === 'host' ? 'host' : 'participant'
+  const [room, setRoom] = useState<RoomMetadata | null>(null)
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadInvite() {
+    async function loadRoom() {
       try {
-        const metadata = await conferenceApi.getInvite(token)
+        const metadata = await conferenceApi.getRoom(roomId)
         if (!cancelled) {
-          setInvite(metadata)
+          setRoom(metadata)
         }
       } finally {
         if (!cancelled) {
@@ -30,18 +32,21 @@ export function InvitePage() {
       }
     }
 
-    void loadInvite()
+    void loadRoom()
 
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [roomId])
 
   async function handleJoin(payload: { displayName: string; micEnabled: boolean; cameraEnabled: boolean }) {
     setJoining(true)
     try {
-      const result = await conferenceApi.joinInvite(token, payload)
-      storeJoinSession(result, token)
+      const result = await conferenceApi.joinRoom(roomId, {
+        ...payload,
+        role: requestedRole
+      })
+      storeJoinSession(result)
       navigate(`/rooms/${result.roomId}`)
     } finally {
       setJoining(false)
@@ -52,26 +57,30 @@ export function InvitePage() {
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <Card className="w-full max-w-3xl">
         <CardHeader>
-          <Badge className="w-fit">Invite preflight</Badge>
+          <Badge className="w-fit">Room preflight</Badge>
           <CardTitle>Preparing your room session</CardTitle>
           <CardDescription>
-            We fetch invite metadata, warm the prejoin flow, and only then start the live WebRTC session.
+            Enter with a room id. The creator can join as host, everyone else joins as participant.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading invite metadata…</p>
+            <p className="text-sm text-muted-foreground">Loading room metadata…</p>
           ) : (
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Room: {invite?.roomId}</p>
-              <p>Role: {invite?.role}</p>
-              <p>Invite expires: {invite?.expiresAt}</p>
+              <p>Room: {room?.roomId}</p>
+              <p>Joining as: {labelForRole(requestedRole)}</p>
+              <p>Participants currently inside: {room?.participantCount ?? 0}</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <PrejoinModal open={!loading && Boolean(invite)} loading={joining} onJoin={handleJoin} />
+      <PrejoinModal open={!loading && Boolean(room)} loading={joining} onJoin={handleJoin} />
     </main>
   )
+}
+
+function labelForRole(role: ParticipantRole) {
+  return role === 'host' ? 'Host' : 'Participant'
 }

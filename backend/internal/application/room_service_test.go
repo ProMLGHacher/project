@@ -62,15 +62,15 @@ func TestCreateRoomAndJoinRoom(t *testing.T) {
 		t.Fatalf("expected create room to succeed, got %v", err)
 	}
 
-	if createResult.ParticipantInviteURL == "" {
-		t.Fatalf("expected shareable invite URL")
+	if createResult.RoomID != "room-1" {
+		t.Fatalf("expected room id to be returned, got %q", createResult.RoomID)
 	}
 
-	joinResult, err := service.JoinRoom(context.Background(), createResult.ParticipantInviteToken, PrejoinPreferences{
+	joinResult, err := service.JoinRoomByID(context.Background(), createResult.RoomID, PrejoinPreferences{
 		DisplayName:   "Guest",
 		MicEnabled:    true,
 		CameraEnabled: false,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("expected join room to succeed, got %v", err)
 	}
@@ -103,11 +103,12 @@ func TestHostJoinReusesReservedHostSlot(t *testing.T) {
 		t.Fatalf("expected create room to succeed, got %v", err)
 	}
 
-	joinResult, err := service.JoinRoom(context.Background(), createResult.HostInviteToken, PrejoinPreferences{
+	joinResult, err := service.JoinRoomByID(context.Background(), createResult.RoomID, PrejoinPreferences{
 		DisplayName:   "Actual Host",
 		MicEnabled:    true,
 		CameraEnabled: true,
-	})
+		Role:          string(domain.RoleHost),
+	}, nil)
 	if err != nil {
 		t.Fatalf("expected host join to succeed, got %v", err)
 	}

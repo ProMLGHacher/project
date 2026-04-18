@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/araik/codex-webrtc/project/backend/internal/domain"
 	"github.com/araik/codex-webrtc/project/backend/internal/protocol"
@@ -62,6 +63,8 @@ func (c *SignalingCoordinator) OnConnected(ctx context.Context, sessionID string
 		return err
 	}
 
+	log.Printf("[signaling] on-connected session_id=%s room_id=%s participant_id=%s", sessionID, session.RoomID, session.ParticipantID)
+
 	room, err := c.rooms.FindByID(ctx, session.RoomID)
 	if err != nil {
 		return err
@@ -85,6 +88,8 @@ func (c *SignalingCoordinator) OnDisconnected(ctx context.Context, sessionID str
 	if err != nil {
 		return nil
 	}
+
+	log.Printf("[signaling] on-disconnected session_id=%s room_id=%s participant_id=%s", sessionID, session.RoomID, session.ParticipantID)
 
 	room, err := c.rooms.FindByID(ctx, session.RoomID)
 	if err != nil {
@@ -110,6 +115,8 @@ func (c *SignalingCoordinator) HandleEnvelope(ctx context.Context, sessionID str
 	if err != nil {
 		return err
 	}
+
+	log.Printf("[signaling] handle-envelope session_id=%s room_id=%s participant_id=%s type=%s", sessionID, session.RoomID, session.ParticipantID, envelope.Type)
 
 	switch envelope.Type {
 	case protocol.TypeParticipantLeft:
@@ -205,6 +212,8 @@ func (c *SignalingCoordinator) broadcastRoomSnapshot(ctx context.Context, roomID
 	if err != nil {
 		return err
 	}
+
+	log.Printf("[signaling] broadcast-room-snapshot room_id=%s participants=%d", roomID, len(room.Participants))
 
 	envelope := protocol.MustEnvelope(protocol.TypeRoomSnapshot, protocol.RoomSnapshotPayload{
 		Snapshot: room.Snapshot(),

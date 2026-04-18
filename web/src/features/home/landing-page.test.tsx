@@ -28,13 +28,9 @@ describe('LandingPage', () => {
     vi.mocked(conferenceApi.createRoom).mockReset()
   })
 
-  it('creates a room and routes to the host invite', async () => {
+  it('creates a room and routes to the host room join flow', async () => {
     vi.mocked(conferenceApi.createRoom).mockResolvedValue({
-      roomId: 'room-1',
-      hostInviteToken: 'host-token',
-      participantInviteToken: 'participant-token',
-      hostInviteUrl: 'http://localhost/invite/host-token',
-      participantInviteUrl: 'http://localhost/invite/participant-token'
+      roomId: 'room-1'
     })
 
     render(
@@ -46,20 +42,22 @@ describe('LandingPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /create room/i }))
 
     await waitFor(() => {
-      expect(navigate).toHaveBeenCalledWith('/invite/host-token')
+      expect(navigate).toHaveBeenCalledWith('/rooms/room-1/join?role=host')
     })
   })
 
-  it('extracts a token from a pasted invite URL', async () => {
+  it('extracts a room id from a pasted room join URL', async () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>
     )
 
-    await userEvent.type(screen.getByPlaceholderText(/https:\/\/app.local\/invite/i), 'https://app.local/invite/demo-token')
-    await userEvent.click(screen.getByRole('button', { name: /join invite/i }))
+    await userEvent.type(screen.getByRole('textbox'), 'https://kvt.araik.dev/rooms/demo-room/join')
+    await userEvent.click(screen.getByRole('button', { name: /join room/i }))
 
-    expect(navigate).toHaveBeenCalledWith('/invite/demo-token')
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/rooms/demo-room/join')
+    })
   })
 })

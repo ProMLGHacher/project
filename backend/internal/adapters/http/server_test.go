@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +52,7 @@ func TestCreateRoomAndJoinEndpoints(t *testing.T) {
 		CameraEnabled: false,
 	})
 	joinRecorder := httptest.NewRecorder()
-	joinRequest := httptest.NewRequest(http.MethodPost, "/api/invites/"+createResponse.ParticipantInviteToken+"/join", bytes.NewReader(body))
+	joinRequest := httptest.NewRequest(http.MethodPost, "/api/rooms/"+createResponse.RoomID+"/join", bytes.NewReader(body))
 	server.Handler().ServeHTTP(joinRecorder, joinRequest)
 
 	if joinRecorder.Code != http.StatusOK {
@@ -61,7 +60,7 @@ func TestCreateRoomAndJoinEndpoints(t *testing.T) {
 	}
 }
 
-func TestEndpointsUseRequestHostForInviteAndWebSocketURLs(t *testing.T) {
+func TestRoomMetadataEndpoint(t *testing.T) {
 	roomRepo := repository.NewInMemoryRoomRepository()
 	sessionRepo := repository.NewInMemorySessionRepository()
 	clock := repository.NewFixedClock(time.Date(2026, 4, 17, 12, 0, 0, 0, time.UTC))
@@ -91,8 +90,53 @@ func TestEndpointsUseRequestHostForInviteAndWebSocketURLs(t *testing.T) {
 		t.Fatalf("expected create response to be valid json, got %v", err)
 	}
 
-	if !strings.HasPrefix(createResponse.HostInviteURL, "http://localhost:8023/invite/") {
-		t.Fatalf("expected host invite url to use request host, got %s", createResponse.HostInviteURL)
+	roomRecorder := httptest.NewRecorder()
+	roomRequest := httptest.NewRequest(http.MethodGet, "http://localhost:8023/api/rooms/"+createResponse.RoomID, nil)
+	roomRequest.Host = "localhost:8023"
+	server.Handler().ServeHTTP(roomRecorder, roomRequest)
+
+	if roomRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 on room metadata, got %d with body %s", roomRecorder.Code, roomRecorder.Body.String())
+	}
+
+	var roomResponse application.RoomMetadata
+	if err := json.Unmarshal(roomRecorder.Body.Bytes(), &roomResponse); err != nil {
+		t.Fatalf("expected room metadata response to be valid json, got %v", err)
+	}
+
+	if roomResponse.RoomID != createResponse.RoomID {
+		t.Fatalf("expected room metadata to use created room id, got %s", roomResponse.RoomID)
+	}
+}
+
+func TestEndpointsUseRequestHostForWebSocketURLs(t *testing.T) {
+	roomRepo := repository.NewInMemoryRoomRepository()
+	sessionRepo := repository.NewInMemorySessionRepository()
+	clock := repository.NewFixedClock(time.Date(2026, 4, 17, 12, 0, 0, 0, time.UTC))
+	ids := repository.NewDeterministicIDGenerator("room-1", "host-seed", "participant-1", "session-1")
+	baseURL, _ := url.Parse("http://fallback.invalid")
+	invites := application.NewHMACInviteService([]byte("secret"), clock, time.Hour)
+	roomService := application.NewRoomService(roomRepo, sessionRepo, invites, clock, ids, baseURL, []application.ICEConfig{
+		{URLs: []string{"stun:turn.local:3478"}},
+	})
+	hub := signaling.NewHub()
+	lookup := repository.NewSessionLookup(roomRepo, sessionRepo)
+	sfu := media.NewSFU(webrtc.NewAPI(), hub, lookup)
+	coordinator := application.NewSignalingCoordinator(roomRepo, sessionRepo, hub, lookup, &mediaBridgeAdapter{sfu: sfu})
+	server := NewServer(roomService, coordinator, hub)
+
+	createRecorder := httptest.NewRecorder()
+	createRequest := httptest.NewRequest(http.MethodPost, "http://localhost:8023/api/rooms", nil)
+	createRequest.Host = "localhost:8023"
+	server.Handler().ServeHTTP(createRecorder, createRequest)
+
+	if createRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201 on create, got %d", createRecorder.Code)
+	}
+
+	var createResponse application.CreateRoomResult
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &createResponse); err != nil {
+		t.Fatalf("expected create response to be valid json, got %v", err)
 	}
 
 	body, _ := json.Marshal(application.PrejoinPreferences{
@@ -101,7 +145,7 @@ func TestEndpointsUseRequestHostForInviteAndWebSocketURLs(t *testing.T) {
 		CameraEnabled: false,
 	})
 	joinRecorder := httptest.NewRecorder()
-	joinRequest := httptest.NewRequest(http.MethodPost, "http://localhost:8023/api/invites/"+createResponse.ParticipantInviteToken+"/join", bytes.NewReader(body))
+	joinRequest := httptest.NewRequest(http.MethodPost, "http://localhost:8023/api/rooms/"+createResponse.RoomID+"/join", bytes.NewReader(body))
 	joinRequest.Host = "localhost:8023"
 	server.Handler().ServeHTTP(joinRecorder, joinRequest)
 
@@ -157,7 +201,7 @@ func TestEndpointsPreserveForwardedHTTPSForWebSocketURLs(t *testing.T) {
 		CameraEnabled: false,
 	})
 	joinRecorder := httptest.NewRecorder()
-	joinRequest := httptest.NewRequest(http.MethodPost, "http://internal-proxy/api/invites/"+createResponse.ParticipantInviteToken+"/join", bytes.NewReader(body))
+	joinRequest := httptest.NewRequest(http.MethodPost, "http://internal-proxy/api/rooms/"+createResponse.RoomID+"/join", bytes.NewReader(body))
 	joinRequest.Host = "internal-proxy"
 	joinRequest.Header.Set("X-Forwarded-Host", "kvt.araik.dev")
 	joinRequest.Header.Set("X-Forwarded-Proto", "https,http")

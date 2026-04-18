@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 
 	"github.com/araik/codex-webrtc/project/backend/internal/domain"
 )
@@ -22,11 +23,7 @@ type RoomService struct {
 }
 
 type CreateRoomResult struct {
-	RoomID                 string `json:"roomId"`
-	HostInviteToken        string `json:"hostInviteToken"`
-	ParticipantInviteToken string `json:"participantInviteToken"`
-	HostInviteURL          string `json:"hostInviteUrl"`
-	ParticipantInviteURL   string `json:"participantInviteUrl"`
+	RoomID string `json:"roomId"`
 }
 
 func NewRoomService(
@@ -54,6 +51,7 @@ func (s *RoomService) CreateRoom(ctx context.Context) (CreateRoomResult, error) 
 }
 
 func (s *RoomService) CreateRoomForBaseURL(ctx context.Context, baseURL *url.URL) (CreateRoomResult, error) {
+	_ = baseURL
 	roomID := s.ids.NewID()
 	now := s.clock.Now()
 	host := domain.NewParticipant(s.ids.NewID(), "Host", domain.RoleHost, now, domain.JoinPreferences{})
@@ -63,22 +61,8 @@ func (s *RoomService) CreateRoomForBaseURL(ctx context.Context, baseURL *url.URL
 		return CreateRoomResult{}, fmt.Errorf("save room: %w", err)
 	}
 
-	hostToken, err := s.invites.CreateToken(roomID, domain.RoleHost)
-	if err != nil {
-		return CreateRoomResult{}, fmt.Errorf("create host token: %w", err)
-	}
-
-	participantToken, err := s.invites.CreateToken(roomID, domain.RoleParticipant)
-	if err != nil {
-		return CreateRoomResult{}, fmt.Errorf("create participant token: %w", err)
-	}
-
 	return CreateRoomResult{
-		RoomID:                 roomID,
-		HostInviteToken:        hostToken,
-		ParticipantInviteToken: participantToken,
-		HostInviteURL:          s.buildInviteURL(baseURL, hostToken),
-		ParticipantInviteURL:   s.buildInviteURL(baseURL, participantToken),
+		RoomID: roomID,
 	}, nil
 }
 
@@ -92,7 +76,40 @@ func (s *RoomService) JoinRoomForBaseURL(ctx context.Context, token string, pref
 		return JoinResult{}, err
 	}
 
-	room, err := s.rooms.FindByID(ctx, claims.RoomID)
+	return s.joinRoom(ctx, claims.RoomID, claims.Role, prefs, baseURL)
+}
+
+func (s *RoomService) GetRoomMetadata(ctx context.Context, roomID string) (RoomMetadata, error) {
+	room, err := s.rooms.FindByID(ctx, roomID)
+	if err != nil {
+		return RoomMetadata{}, err
+	}
+
+	roles := make([]domain.ParticipantRole, 0, len(room.Participants))
+	for _, participant := range room.Participants {
+		roles = append(roles, participant.Role)
+	}
+	slices.Sort(roles)
+
+	return RoomMetadata{
+		RoomID:            room.ID,
+		HostParticipantID: room.HostParticipantID,
+		ParticipantCount:  len(room.Participants),
+		Roles:             roles,
+	}, nil
+}
+
+func (s *RoomService) JoinRoomByID(ctx context.Context, roomID string, prefs PrejoinPreferences, baseURL *url.URL) (JoinResult, error) {
+	role := domain.RoleParticipant
+	if prefs.Role == string(domain.RoleHost) {
+		role = domain.RoleHost
+	}
+
+	return s.joinRoom(ctx, roomID, role, prefs, baseURL)
+}
+
+func (s *RoomService) joinRoom(ctx context.Context, roomID string, role domain.ParticipantRole, prefs PrejoinPreferences, baseURL *url.URL) (JoinResult, error) {
+	room, err := s.rooms.FindByID(ctx, roomID)
 	if err != nil {
 		return JoinResult{}, err
 	}
@@ -103,7 +120,7 @@ func (s *RoomService) JoinRoomForBaseURL(ctx context.Context, token string, pref
 	now := s.clock.Now()
 	var participant *domain.Participant
 
-	if claims.Role == domain.RoleHost && room.HostParticipantID != "" {
+	if role == domain.RoleHost && room.HostParticipantID != "" {
 		existingHost, exists := room.Participants[room.HostParticipantID]
 		if !exists {
 			return JoinResult{}, ErrRoomNotFound
@@ -116,11 +133,11 @@ func (s *RoomService) JoinRoomForBaseURL(ctx context.Context, token string, pref
 		participant = existingHost
 	} else {
 		participantID := s.ids.NewID()
-		participant = domain.NewParticipant(participantID, prefs.DisplayName, claims.Role, now, domain.JoinPreferences{
+		participant = domain.NewParticipant(participantID, prefs.DisplayName, role, now, domain.JoinPreferences{
 			MicEnabled:    prefs.MicEnabled,
 			CameraEnabled: prefs.CameraEnabled,
 		})
-		if claims.Role == domain.RoleHost {
+		if role == domain.RoleHost {
 			participant.Role = domain.RoleHost
 		}
 
@@ -160,12 +177,6 @@ func (s *RoomService) JoinRoomForBaseURL(ctx context.Context, token string, pref
 
 func (s *RoomService) GetInviteMetadata(token string) (InviteClaims, error) {
 	return s.invites.ParseToken(token)
-}
-
-func (s *RoomService) buildInviteURL(baseURL *url.URL, token string) string {
-	u := *s.resolveBaseURL(baseURL)
-	u.Path = fmt.Sprintf("/invite/%s", token)
-	return u.String()
 }
 
 func (s *RoomService) buildWSURL(baseURL *url.URL, sessionID string) string {

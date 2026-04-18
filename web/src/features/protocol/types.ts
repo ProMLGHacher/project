@@ -23,16 +23,18 @@ export interface RoomSnapshot {
   participants: ParticipantState[]
 }
 
-export interface InviteMetadata {
+export interface RoomMetadata {
   roomId: string
-  role: ParticipantRole
-  expiresAt: string
+  hostParticipantId: string
+  participantCount: number
+  roles: ParticipantRole[]
 }
 
 export interface JoinRequest {
   displayName: string
   micEnabled: boolean
   cameraEnabled: boolean
+  role?: ParticipantRole
 }
 
 export interface ICEServerConfig {
@@ -53,10 +55,6 @@ export interface JoinResponse {
 
 export interface CreateRoomResponse {
   roomId: string
-  hostInviteToken: string
-  participantInviteToken: string
-  hostInviteUrl: string
-  participantInviteUrl: string
 }
 
 export interface SignalEnvelope<T = unknown> {
@@ -88,4 +86,12 @@ export interface RoomSnapshotPayload {
 
 export interface IceRestartPayload {
   peer: SignalPeer
+}
+
+export interface ErrorPayload {
+  message: string
+}
+
+export interface HeartbeatPayload {
+  timestamp: number
 }

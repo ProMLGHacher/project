@@ -86,7 +86,7 @@ export function RoomPage() {
         <Card className="max-w-lg">
           <CardHeader>
             <CardTitle>Session not found</CardTitle>
-            <CardDescription>Open the invite link again so the prejoin flow can issue a fresh room session.</CardDescription>
+            <CardDescription>Open the room join page again so the prejoin flow can issue a fresh room session.</CardDescription>
           </CardHeader>
         </Card>
       </main>
@@ -168,10 +168,9 @@ export function RoomPage() {
 
   async function handleCopyLink() {
     try {
-      const inviteToken = joinSession?.inviteToken
-      const inviteURL = inviteToken ? `${window.location.origin}/invite/${inviteToken}` : window.location.href
-      await navigator.clipboard.writeText(inviteURL)
-      setActionStatus('Invite link copied.')
+      const roomJoinURL = joinSession?.roomJoinUrl ?? `${window.location.origin}/rooms/${activeSession.roomId}/join`
+      await navigator.clipboard.writeText(roomJoinURL)
+      setActionStatus('Room join link copied.')
     } catch (error) {
       setRoomError(readableError(error))
       setActionStatus('Copy link failed.')

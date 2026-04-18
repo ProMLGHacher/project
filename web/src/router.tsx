@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { LandingPage } from '@/features/home/landing-page'
-import { InvitePage } from '@/features/prejoin/invite-page'
+import { RoomJoinPage } from '@/features/prejoin/room-join-page'
 import { RoomPage } from '@/features/room/room-page'
 
 export const router = createBrowserRouter([
@@ -9,8 +9,8 @@ export const router = createBrowserRouter([
     element: <LandingPage />
   },
   {
-    path: '/invite/:token',
-    element: <InvitePage />
+    path: '/rooms/:roomId/join',
+    element: <RoomJoinPage />
   },
   {
     path: '/rooms/:roomId',

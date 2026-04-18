@@ -3,15 +3,15 @@ import type { JoinResponse } from '@/features/protocol/types'
 const SESSION_PREFIX = 'voice-first-sfu:session:'
 
 export interface StoredJoinSession extends JoinResponse {
-  inviteToken?: string
+  roomJoinUrl?: string
 }
 
 type LocationLike = Pick<Location, 'origin' | 'protocol'>
 
-export function storeJoinSession(session: JoinResponse, inviteToken: string, locationLike: LocationLike = window.location) {
+export function storeJoinSession(session: JoinResponse, locationLike: LocationLike = window.location) {
   const storedSession = normalizeStoredJoinSession({
     ...session,
-    inviteToken
+    roomJoinUrl: `${locationLike.origin}/rooms/${session.roomId}/join`
   }, locationLike)
 
   sessionStorage.setItem(SESSION_PREFIX + session.roomId, JSON.stringify(storedSession))

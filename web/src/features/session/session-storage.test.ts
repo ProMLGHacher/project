@@ -46,7 +46,6 @@ describe('session storage', () => {
   it('normalizes stored room sessions when loading older saved data', () => {
     storeJoinSession(
       session,
-      'invite-token',
       {
         origin: 'http://kvt.araik.dev',
         protocol: 'http:'

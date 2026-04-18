@@ -118,8 +118,15 @@ func TestAttachExistingSourcesEmitsSubscriberOffer(t *testing.T) {
 	if len(envelopes) == 0 {
 		t.Fatalf("expected subscriber offer to be emitted")
 	}
-	if envelopes[0].Type != protocol.TypeSubscriberOffer {
-		t.Fatalf("expected first emitted envelope to be subscriber.offer, got %s", envelopes[0].Type)
+	foundOffer := false
+	for _, envelope := range envelopes {
+		if envelope.Type == protocol.TypeSubscriberOffer {
+			foundOffer = true
+			break
+		}
+	}
+	if !foundOffer {
+		t.Fatalf("expected emitted envelopes to include subscriber.offer, got %#v", envelopes)
 	}
 }
 

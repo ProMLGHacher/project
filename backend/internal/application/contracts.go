@@ -41,6 +41,7 @@ type PrejoinPreferences struct {
 	DisplayName   string `json:"displayName"`
 	MicEnabled    bool   `json:"micEnabled"`
 	CameraEnabled bool   `json:"cameraEnabled"`
+	Role          string `json:"role,omitempty"`
 }
 
 type ICEConfig struct {
@@ -57,4 +58,11 @@ type JoinResult struct {
 	WSURL         string                 `json:"wsUrl"`
 	ICEServers    []ICEConfig            `json:"iceServers"`
 	Snapshot      domain.RoomSnapshot    `json:"snapshot"`
+}
+
+type RoomMetadata struct {
+	RoomID            string                 `json:"roomId"`
+	HostParticipantID string                 `json:"hostParticipantId"`
+	ParticipantCount  int                    `json:"participantCount"`
+	Roles             []domain.ParticipantRole `json:"roles"`
 }

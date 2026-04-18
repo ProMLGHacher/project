@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -36,6 +37,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/api/rooms", s.handleCreateRoom)
+	mux.HandleFunc("/api/rooms/", s.handleRoomRoutes)
 	mux.HandleFunc("/api/invites/", s.handleInviteRoutes)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 	return mux
@@ -57,7 +59,58 @@ func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[http] create-room room_id=%s host=%s", result.RoomID, requestBaseURL(r).Host)
 	writeJSON(w, http.StatusCreated, result)
+}
+
+func (s *Server) handleRoomRoutes(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/rooms/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 || parts[0] == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	roomID := parts[0]
+
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		metadata, err := s.roomService.GetRoomMetadata(r.Context(), roomID)
+		if err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, application.ErrRoomNotFound) {
+				status = http.StatusNotFound
+			}
+			writeError(w, status, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, metadata)
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "join" && r.Method == http.MethodPost {
+		var prefs application.PrejoinPreferences
+		if err := json.NewDecoder(r.Body).Decode(&prefs); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		result, err := s.roomService.JoinRoomByID(r.Context(), roomID, prefs, requestBaseURL(r))
+		if err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, application.ErrRoomNotFound) {
+				status = http.StatusNotFound
+			}
+			writeError(w, status, err)
+			return
+		}
+
+		log.Printf("[http] join-room room_id=%s participant_id=%s role=%s display_name=%q", result.RoomID, result.ParticipantID, result.Role, prefs.DisplayName)
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+
+	http.NotFound(w, r)
 }
 
 func (s *Server) handleInviteRoutes(w http.ResponseWriter, r *http.Request) {
@@ -112,15 +165,17 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	log.Printf("[ws] connected session_id=%s remote=%s", sessionID, r.RemoteAddr)
 	s.hub.Register(sessionID, conn)
 	defer func() {
 		s.hub.Unregister(sessionID)
 		_ = s.coordinator.OnDisconnected(context.Background(), sessionID)
 		_ = conn.Close()
+		log.Printf("[ws] disconnected session_id=%s remote=%s", sessionID, r.RemoteAddr)
 	}()
 
 	if err := s.coordinator.OnConnected(context.Background(), sessionID); err != nil {
-		_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeParticipantLeft, map[string]string{"error": err.Error()}))
+		_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeError, protocol.ErrorPayload{Message: err.Error()}))
 		return
 	}
 
@@ -132,12 +187,19 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		envelope, err := signaling.DecodeEnvelope(data)
 		if err != nil {
-			_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeParticipantLeft, map[string]string{"error": err.Error()}))
+			_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeError, protocol.ErrorPayload{Message: err.Error()}))
+			continue
+		}
+
+		if envelope.Type == protocol.TypeHeartbeatPing {
+			var payload protocol.HeartbeatPayload
+			_ = json.Unmarshal(envelope.Payload, &payload)
+			_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeHeartbeatPong, payload))
 			continue
 		}
 
 		if err := s.coordinator.HandleEnvelope(context.Background(), sessionID, envelope); err != nil {
-			_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeParticipantLeft, map[string]string{"error": err.Error()}))
+			_ = conn.WriteJSON(protocol.MustEnvelope(protocol.TypeError, protocol.ErrorPayload{Message: err.Error()}))
 		}
 	}
 }

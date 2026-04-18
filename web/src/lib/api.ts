@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type {
   CreateRoomResponse,
-  InviteMetadata,
+  RoomMetadata,
   JoinRequest,
   JoinResponse
 } from '@/features/protocol/types'
@@ -15,12 +15,12 @@ export const conferenceApi = {
     const { data } = await api.post<CreateRoomResponse>('/api/rooms')
     return data
   },
-  async getInvite(token: string) {
-    const { data } = await api.get<InviteMetadata>(`/api/invites/${token}`)
+  async getRoom(roomId: string) {
+    const { data } = await api.get<RoomMetadata>(`/api/rooms/${roomId}`)
     return data
   },
-  async joinInvite(token: string, payload: JoinRequest) {
-    const { data } = await api.post<JoinResponse>(`/api/invites/${token}/join`, payload)
+  async joinRoom(roomId: string, payload: JoinRequest) {
+    const { data } = await api.post<JoinResponse>(`/api/rooms/${roomId}/join`, payload)
     return data
   }
 }

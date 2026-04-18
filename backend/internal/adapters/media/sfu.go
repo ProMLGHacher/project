@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/araik/codex-webrtc/project/backend/internal/domain"
@@ -127,6 +128,7 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 	})
 
 	s.publishers[participantID] = peer
+	log.Printf("[sfu] ensure-publisher room_id=%s participant_id=%s", roomID, participantID)
 	return peer, nil
 }
 
@@ -167,6 +169,7 @@ func (s *SFU) EnsureSubscriber(roomID, participantID string) (*SubscriberPeer, e
 	})
 
 	s.subscribers[participantID] = peer
+	log.Printf("[sfu] ensure-subscriber room_id=%s participant_id=%s", roomID, participantID)
 	return peer, nil
 }
 
@@ -179,6 +182,7 @@ func (s *SFU) UpdateSlotPreference(participantID string, kind domain.SlotKind, e
 	}
 	peer.DesiredSlots[kind] = enabled
 	s.mu.Unlock()
+	log.Printf("[sfu] update-slot-preference participant_id=%s kind=%s enabled=%t", participantID, kind, enabled)
 
 	// Voice and video slots stay reserved even while a track is temporarily removed.
 	// That lets the same publisher/subscriber graph recover on resume without rebuilding
@@ -300,8 +304,10 @@ func (s *SFU) AttachExistingSources(participantID string) error {
 	}
 
 	if !attachedAny {
+		log.Printf("[sfu] attach-existing-sources participant_id=%s attached=0", participantID)
 		return nil
 	}
+	log.Printf("[sfu] attach-existing-sources participant_id=%s attached=%d", participantID, len(sources))
 
 	offer, err := s.CreateSubscriberOffer(participantID, false)
 	if err != nil {
@@ -323,6 +329,7 @@ func (s *SFU) AttachExistingSources(participantID string) error {
 }
 
 func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, remote *webrtc.TrackRemote) error {
+	log.Printf("[sfu] publish-track room_id=%s participant_id=%s kind=%s track_id=%s stream_id=%s", roomID, participantID, kind, remote.ID(), remote.StreamID())
 	codec := remote.Codec().RTPCodecCapability
 	local, err := webrtc.NewTrackLocalStaticRTP(codec, string(kind), participantID)
 	if err != nil {
@@ -392,10 +399,12 @@ func (s *SFU) addSourceToSubscriber(subscriber *SubscriberPeer, source *SourceTr
 	}
 
 	subscriber.Senders[key] = sender
+	log.Printf("[sfu] add-source-to-subscriber subscriber_id=%s source_participant_id=%s kind=%s", subscriber.ParticipantID, source.ParticipantID, source.Kind)
 	return nil
 }
 
 func (s *SFU) unpublish(participantID string, kind domain.SlotKind) error {
+	log.Printf("[sfu] unpublish participant_id=%s kind=%s", participantID, kind)
 	key := participantSlotKey{ParticipantID: participantID, Kind: kind}
 
 	s.mu.Lock()

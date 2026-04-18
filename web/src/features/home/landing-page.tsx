@@ -9,26 +9,26 @@ import { Badge } from '@/components/ui/badge'
 
 export function LandingPage() {
   const navigate = useNavigate()
-  const [inviteInput, setInviteInput] = useState('')
+  const [roomInput, setRoomInput] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
 
   async function handleCreateRoom() {
     setCreatingRoom(true)
     try {
       const room = await conferenceApi.createRoom()
-      navigate(`/invite/${room.hostInviteToken}`)
+      navigate(`/rooms/${room.roomId}/join?role=host`)
     } finally {
       setCreatingRoom(false)
     }
   }
 
-  function handleJoinByInvite(event: React.FormEvent<HTMLFormElement>) {
+  function handleJoinByRoomID(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const token = extractToken(inviteInput)
-    if (!token) {
+    const roomId = extractRoomId(roomInput)
+    if (!roomId) {
       return
     }
-    navigate(`/invite/${token}`)
+    navigate(`/rooms/${roomId}/join`)
   }
 
   return (
@@ -45,7 +45,7 @@ export function LandingPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-600">
             <Badge>Single-node SFU</Badge>
-            <Badge>Invite links + name</Badge>
+            <Badge>Room id + name</Badge>
             <Badge>TURN-ready</Badge>
             <Badge>Desktop Chromium first</Badge>
           </div>
@@ -55,7 +55,7 @@ export function LandingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Create a room</CardTitle>
-              <CardDescription>Generate a host invite and land straight into the prejoin experience.</CardDescription>
+              <CardDescription>Create a room id and go straight into the host prejoin experience.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button className="w-full justify-between" size="lg" onClick={handleCreateRoom} disabled={creatingRoom}>
@@ -70,18 +70,18 @@ export function LandingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Join by invite</CardTitle>
-              <CardDescription>Paste the full invite URL or just the invite token.</CardDescription>
+              <CardTitle>Join by room id</CardTitle>
+              <CardDescription>Paste the room id or the full room join URL.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4" onSubmit={handleJoinByInvite}>
+              <form className="space-y-4" onSubmit={handleJoinByRoomID}>
                 <Input
-                  placeholder="https://app.local/invite/abc123 or abc123"
-                  value={inviteInput}
-                  onChange={(event) => setInviteInput(event.target.value)}
+                  placeholder="cda7fc49-42e1-4a64-a0bc-b157071c15c3 or https://kvt.araik.dev/rooms/<id>/join"
+                  value={roomInput}
+                  onChange={(event) => setRoomInput(event.target.value)}
                 />
                 <Button className="w-full" type="submit" variant="secondary">
-                  Join invite
+                  Join room
                 </Button>
               </form>
             </CardContent>
@@ -106,14 +106,14 @@ export function LandingPage() {
   )
 }
 
-function extractToken(input: string) {
+function extractRoomId(input: string) {
   const trimmed = input.trim()
   if (!trimmed) {
     return ''
   }
 
-  const match = trimmed.match(/\/invite\/([^/?#]+)/)
-  return match?.[1] ?? trimmed
+  const roomJoinMatch = trimmed.match(/\/rooms\/([^/?#]+)(?:\/join)?/)
+  return roomJoinMatch?.[1] ?? trimmed
 }
 
 function FeaturePill({ icon, label }: { icon: React.ReactNode; label: string }) {

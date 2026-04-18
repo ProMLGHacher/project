@@ -12,6 +12,9 @@ const (
 	TypeParticipantJoined   = "participant.joined"
 	TypeParticipantLeft     = "participant.left"
 	TypeParticipantUpdated  = "participant.updated"
+	TypeError               = "error"
+	TypeHeartbeatPing       = "heartbeat.ping"
+	TypeHeartbeatPong       = "heartbeat.pong"
 	TypePublisherOffer      = "publisher.offer"
 	TypePublisherAnswer     = "publisher.answer"
 	TypeSubscriberOffer     = "subscriber.offer"
@@ -55,6 +58,14 @@ type SlotUpdatedPayload struct {
 
 type IceRestartPayload struct {
 	Peer string `json:"peer"`
+}
+
+type ErrorPayload struct {
+	Message string `json:"message"`
+}
+
+type HeartbeatPayload struct {
+	Timestamp int64 `json:"timestamp"`
 }
 
 func MustEnvelope(messageType string, payload any) Envelope {
