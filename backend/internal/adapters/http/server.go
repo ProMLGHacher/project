@@ -154,13 +154,13 @@ func writeError(w http.ResponseWriter, status int, err error) {
 
 func requestBaseURL(r *http.Request) *url.URL {
 	scheme := "http"
-	if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
+	if forwardedProto := firstForwardedValue(r.Header.Get("X-Forwarded-Proto")); forwardedProto != "" {
 		scheme = forwardedProto
 	} else if r.TLS != nil {
 		scheme = "https"
 	}
 
-	host := r.Header.Get("X-Forwarded-Host")
+	host := firstForwardedValue(r.Header.Get("X-Forwarded-Host"))
 	if host == "" {
 		host = r.Host
 	}
@@ -169,4 +169,13 @@ func requestBaseURL(r *http.Request) *url.URL {
 		Scheme: scheme,
 		Host:   host,
 	}
+}
+
+func firstForwardedValue(value string) string {
+	if value == "" {
+		return ""
+	}
+
+	parts := strings.Split(value, ",")
+	return strings.TrimSpace(parts[0])
 }
