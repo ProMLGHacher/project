@@ -58,8 +58,42 @@ describe('PrejoinModal', () => {
     await waitFor(() => {
       expect(getUserMediaMock).toHaveBeenCalledWith({
         audio: true,
+        video: false
+      })
+      expect(getUserMediaMock).toHaveBeenCalledWith({
+        audio: false,
         video: true
       })
+    })
+  })
+
+  it('does not restart the camera preview when only microphone state changes', async () => {
+    render(<PrejoinModal open onJoin={vi.fn()} />)
+
+    const switches = screen.getAllByRole('switch')
+    await userEvent.click(switches[1])
+
+    await waitFor(() => {
+      expect(getUserMediaMock).toHaveBeenCalledWith({
+        audio: true,
+        video: false
+      })
+      expect(getUserMediaMock).toHaveBeenCalledWith({
+        audio: false,
+        video: true
+      })
+    })
+
+    const videoCallsBeforeMicToggle = getUserMediaMock.mock.calls.filter(
+      ([constraints]) => (constraints as { video?: boolean }).video === true
+    ).length
+    await userEvent.click(switches[0])
+
+    await waitFor(() => {
+      const videoCallsAfterMicToggle = getUserMediaMock.mock.calls.filter(
+        ([constraints]) => (constraints as { video?: boolean }).video === true
+      ).length
+      expect(videoCallsAfterMicToggle).toBe(videoCallsBeforeMicToggle)
     })
   })
 })

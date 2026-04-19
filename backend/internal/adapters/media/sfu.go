@@ -744,12 +744,12 @@ func protocolHint(candidate string) string {
 	switch {
 	case candidate == "":
 		return "unknown"
+	case strings.Contains(candidate, "typ relay"):
+		return "relay"
 	case strings.Contains(candidate, " udp "):
 		return "udp"
 	case strings.Contains(candidate, " tcp "):
 		return "tcp"
-	case strings.Contains(candidate, "typ relay"):
-		return "relay"
 	default:
 		return "other"
 	}

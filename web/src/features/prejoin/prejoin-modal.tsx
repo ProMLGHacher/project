@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { Switch } from '@/components/ui/switch'
+import { logInfo, logWarn } from '@/lib/logger'
 
 interface PrejoinModalProps {
   open: boolean
@@ -20,7 +21,9 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
   const [previewStatus, setPreviewStatus] = useState('Microphone is ready. Camera starts off.')
   const [previewError, setPreviewError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
+  const previewVideoTrackRef = useRef<MediaStreamTrack | null>(null)
+  const previewAudioTrackRef = useRef<MediaStreamTrack | null>(null)
+  const previewStreamRef = useRef<MediaStream | null>(null)
 
   const previewLabel = useMemo(() => {
     if (cameraEnabled && micEnabled) {
@@ -44,16 +47,17 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
     let cancelled = false
 
     async function syncPreview() {
-      stopPreview(streamRef.current)
-      streamRef.current = null
-      setPreviewStream(null)
       setPreviewError(null)
 
       if (!open) {
+        releasePreviewTracks(previewVideoTrackRef, previewAudioTrackRef, previewStreamRef)
+        setPreviewStream(null)
         return
       }
 
       if (!micEnabled && !cameraEnabled) {
+        releasePreviewTracks(previewVideoTrackRef, previewAudioTrackRef, previewStreamRef)
+        setPreviewStream(null)
         setPreviewStatus('Microphone and camera are both off. You can still join muted and add them later.')
         return
       }
@@ -73,19 +77,56 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
       setPreviewStatus('Requesting microphone and camera access…')
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: micEnabled,
-          video: cameraEnabled
-        })
+        if (cameraEnabled && !previewVideoTrackRef.current) {
+          const videoStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true
+          })
+          const [videoTrack] = videoStream.getVideoTracks()
+          if (videoTrack) {
+            previewVideoTrackRef.current = videoTrack
+            logInfo('prejoin', 'camera preview track acquired', { trackId: videoTrack.id })
+          }
+        }
+
+        if (!cameraEnabled && previewVideoTrackRef.current) {
+          previewVideoTrackRef.current.stop()
+          previewVideoTrackRef.current = null
+          logInfo('prejoin', 'camera preview track released')
+        }
+
+        if (micEnabled && !previewAudioTrackRef.current) {
+          const audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false
+          })
+          const [audioTrack] = audioStream.getAudioTracks()
+          if (audioTrack) {
+            previewAudioTrackRef.current = audioTrack
+            logInfo('prejoin', 'microphone preview track acquired', { trackId: audioTrack.id })
+          }
+        }
+
+        if (!micEnabled && previewAudioTrackRef.current) {
+          previewAudioTrackRef.current.stop()
+          previewAudioTrackRef.current = null
+          logInfo('prejoin', 'microphone preview track released')
+        }
 
         if (cancelled) {
-          stopPreview(stream)
           return
         }
 
-        streamRef.current = stream
-        setPreviewStream(stream)
-        setPreviewStatus(describePreview(stream, micEnabled, cameraEnabled))
+        const nextPreviewStream = buildPreviewStream(previewStreamRef.current, previewVideoTrackRef.current)
+        previewStreamRef.current = nextPreviewStream
+        setPreviewStream(nextPreviewStream)
+        setPreviewStatus(
+          describePreview(
+            nextPreviewStream ?? new MediaStream(),
+            micEnabled,
+            cameraEnabled
+          )
+        )
       } catch (error) {
         if (cancelled) {
           return
@@ -93,6 +134,7 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
 
         setPreviewStatus('Preview unavailable.')
         setPreviewError(describeMediaError(error))
+        logWarn('prejoin', 'preview sync failed', { error: describeMediaError(error) })
       }
     }
 
@@ -100,10 +142,14 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
 
     return () => {
       cancelled = true
-      stopPreview(streamRef.current)
-      streamRef.current = null
     }
   }, [open, micEnabled, cameraEnabled])
+
+  useEffect(() => {
+    return () => {
+      releasePreviewTracks(previewVideoTrackRef, previewAudioTrackRef, previewStreamRef)
+    }
+  }, [])
 
   return (
     <Modal
@@ -184,10 +230,6 @@ export function PrejoinModal({ open, loading, onJoin }: PrejoinModalProps) {
   )
 }
 
-function stopPreview(stream: MediaStream | null) {
-  stream?.getTracks().forEach((track) => track.stop())
-}
-
 function describePreview(stream: MediaStream, micEnabled: boolean, cameraEnabled: boolean) {
   const hasVideo = stream.getVideoTracks().length > 0
   const hasAudio = stream.getAudioTracks().length > 0
@@ -203,6 +245,66 @@ function describePreview(stream: MediaStream, micEnabled: boolean, cameraEnabled
   }
 
   return 'Preview is ready.'
+}
+
+function buildPreviewStream(current: MediaStream | null, videoTrack: MediaStreamTrack | null) {
+  if (!videoTrack) {
+    return null
+  }
+
+  const stream = current ?? createPreviewMediaStream()
+  const existingTracks = stream.getVideoTracks()
+  for (const track of existingTracks) {
+    if (track !== videoTrack) {
+      stream.removeTrack(track)
+    }
+  }
+  if (!existingTracks.includes(videoTrack)) {
+    stream.addTrack(videoTrack)
+  }
+  return stream
+}
+
+function createPreviewMediaStream() {
+  if (typeof MediaStream !== 'undefined') {
+    return new MediaStream()
+  }
+
+  const tracks: MediaStreamTrack[] = []
+  return {
+    addTrack(track: MediaStreamTrack) {
+      if (!tracks.includes(track)) {
+        tracks.push(track)
+      }
+    },
+    removeTrack(track: MediaStreamTrack) {
+      const index = tracks.indexOf(track)
+      if (index >= 0) {
+        tracks.splice(index, 1)
+      }
+    },
+    getTracks() {
+      return [...tracks]
+    },
+    getVideoTracks() {
+      return tracks.filter((track) => track.kind === 'video')
+    },
+    getAudioTracks() {
+      return tracks.filter((track) => track.kind === 'audio')
+    }
+  } as MediaStream
+}
+
+function releasePreviewTracks(
+  videoTrackRef: React.MutableRefObject<MediaStreamTrack | null>,
+  audioTrackRef: React.MutableRefObject<MediaStreamTrack | null>,
+  streamRef: React.MutableRefObject<MediaStream | null>
+) {
+  videoTrackRef.current?.stop()
+  audioTrackRef.current?.stop()
+  videoTrackRef.current = null
+  audioTrackRef.current = null
+  streamRef.current = null
 }
 
 function describeMediaError(error: unknown) {

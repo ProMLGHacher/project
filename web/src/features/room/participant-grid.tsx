@@ -80,6 +80,8 @@ const ParticipantVideo = memo(function ParticipantVideo({
       return
     }
 
+    logInfo('room-media', 'video element mounted', { participantId, isLocal })
+
     if (node.srcObject !== stream) {
       node.srcObject = stream
       logInfo('room-media', 'video stream attached', {
@@ -98,15 +100,37 @@ const ParticipantVideo = memo(function ParticipantVideo({
     const handleStalled = () => {
       logInfo('room-media', 'video stalled', { participantId, isLocal, readyState: node.readyState })
     }
+    const handleLoadedMetadata = () => {
+      logInfo('room-media', 'video metadata loaded', {
+        participantId,
+        isLocal,
+        videoWidth: node.videoWidth,
+        videoHeight: node.videoHeight,
+        readyState: node.readyState
+      })
+    }
+    const handlePause = () => {
+      logInfo('room-media', 'video paused', { participantId, isLocal, readyState: node.readyState })
+    }
+    const handleError = () => {
+      logInfo('room-media', 'video error', { participantId, isLocal, readyState: node.readyState })
+    }
 
     node.addEventListener('playing', handlePlaying)
     node.addEventListener('waiting', handleWaiting)
     node.addEventListener('stalled', handleStalled)
+    node.addEventListener('loadedmetadata', handleLoadedMetadata)
+    node.addEventListener('pause', handlePause)
+    node.addEventListener('error', handleError)
 
     return () => {
+      logInfo('room-media', 'video element unmounted', { participantId, isLocal })
       node.removeEventListener('playing', handlePlaying)
       node.removeEventListener('waiting', handleWaiting)
       node.removeEventListener('stalled', handleStalled)
+      node.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      node.removeEventListener('pause', handlePause)
+      node.removeEventListener('error', handleError)
     }
   }, [participantId, stream, isLocal])
 
@@ -134,6 +158,26 @@ const ParticipantAudio = memo(function ParticipantAudio({
         participantId,
         trackIds: describeTracks(stream)
       })
+    }
+
+    const handlePlaying = () => {
+      logInfo('room-media', 'audio playing', { participantId })
+    }
+    const handlePause = () => {
+      logInfo('room-media', 'audio paused', { participantId })
+    }
+    const handleError = () => {
+      logInfo('room-media', 'audio error', { participantId })
+    }
+
+    node.addEventListener('playing', handlePlaying)
+    node.addEventListener('pause', handlePause)
+    node.addEventListener('error', handleError)
+
+    return () => {
+      node.removeEventListener('playing', handlePlaying)
+      node.removeEventListener('pause', handlePause)
+      node.removeEventListener('error', handleError)
     }
   }, [participantId, stream])
 

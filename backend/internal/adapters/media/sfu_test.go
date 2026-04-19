@@ -221,6 +221,14 @@ func TestRemoveParticipantCleansPeersAndSources(t *testing.T) {
 	}
 }
 
+func TestProtocolHintPrefersRelayOverTransportKeyword(t *testing.T) {
+	candidate := "candidate:1 1 udp 58597631 85.192.132.222 49173 typ relay raddr 85.192.132.222 rport 60386"
+
+	if hint := protocolHint(candidate); hint != "relay" {
+		t.Fatalf("expected relay hint, got %s", hint)
+	}
+}
+
 func newTestAPI() *webrtc.API {
 	var settings webrtc.SettingEngine
 	settings.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)

@@ -282,8 +282,50 @@ export class ConferenceClient {
           slotKind,
           trackKind: event.track.kind,
           trackId: event.track.id,
-          streamId: stream?.id ?? 'unknown'
+          streamId: stream?.id ?? 'unknown',
+          muted: event.track.muted,
+          readyState: event.track.readyState,
+          transceiverMid: event.transceiver?.mid ?? null
         })
+
+        const handleMute = () => {
+          logInfo('rtc', 'remote track muted', {
+            participantId,
+            slotKind,
+            trackKind: event.track.kind,
+            trackId: event.track.id,
+            readyState: event.track.readyState
+          })
+        }
+        const handleUnmute = () => {
+          logInfo('rtc', 'remote track unmuted', {
+            participantId,
+            slotKind,
+            trackKind: event.track.kind,
+            trackId: event.track.id,
+            readyState: event.track.readyState
+          })
+          void this.logPeerStatsSnapshot(pc, peer, 'track-unmuted')
+        }
+        const handleEnded = () => {
+          logWarn('rtc', 'remote track ended', {
+            participantId,
+            slotKind,
+            trackKind: event.track.kind,
+            trackId: event.track.id
+          })
+        }
+
+        event.track.addEventListener('mute', handleMute)
+        event.track.addEventListener('unmute', handleUnmute)
+        event.track.addEventListener('ended', handleEnded)
+
+        window.setTimeout(() => {
+          void this.logPeerStatsSnapshot(pc, peer, 'track-attached-1s')
+        }, 1000)
+        window.setTimeout(() => {
+          void this.logPeerStatsSnapshot(pc, peer, 'track-attached-5s')
+        }, 5000)
       }
     }
 
@@ -388,28 +430,68 @@ export class ConferenceClient {
   private async logPeerStatsSnapshot(
     pc: RTCPeerConnection,
     peer: LocalPeerKind,
-    reason: RTCIceConnectionState
+    reason: RTCIceConnectionState | 'track-unmuted' | 'track-attached-1s' | 'track-attached-5s'
   ) {
-    if (!['checking', 'connected', 'disconnected', 'failed'].includes(reason)) {
+    if (
+      !['checking', 'connected', 'disconnected', 'failed', 'track-unmuted', 'track-attached-1s', 'track-attached-5s'].includes(
+        reason
+      )
+    ) {
       return
     }
 
     try {
       const report = await pc.getStats()
       let selectedPair: RTCStats | null = null
+      let transportStat: RTCStats | null = null
       const candidates = new Map<string, RTCStats>()
+      const inbound: Array<Record<string, unknown>> = []
+      const outbound: Array<Record<string, unknown>> = []
 
       report.forEach((stat) => {
-        if (stat.type === 'candidate-pair' && 'selected' in stat && stat.selected) {
+        if (stat.type === 'transport') {
+          transportStat = stat
+        }
+        if (
+          stat.type === 'candidate-pair' &&
+          (('selected' in stat && stat.selected) ||
+            ('nominated' in stat && stat.nominated && 'state' in stat && stat.state === 'succeeded'))
+        ) {
           selectedPair = stat
         }
         if (stat.type === 'local-candidate' || stat.type === 'remote-candidate') {
           candidates.set(stat.id, stat)
         }
+        if (stat.type === 'inbound-rtp') {
+          inbound.push(describeMediaFlowStats(stat))
+        }
+        if (stat.type === 'outbound-rtp') {
+          outbound.push(describeMediaFlowStats(stat))
+        }
       })
 
+      const transportSnapshot = transportStat as
+        | (RTCStats & {
+            selectedCandidatePairId?: string
+          })
+        | null
+
+      if (!selectedPair && transportSnapshot) {
+        const selectedPairId = transportSnapshot.selectedCandidatePairId
+        if (typeof selectedPairId === 'string' && selectedPairId.length > 0) {
+          selectedPair = report.get(selectedPairId) ?? null
+        }
+      }
+
       if (!selectedPair) {
-        logInfo('rtc', 'peer stats snapshot', { peer, reason, selectedPair: 'none' })
+        logInfo('rtc', 'peer stats snapshot', {
+          peer,
+          reason,
+          selectedPair: 'none',
+          transport: describeTransportStats(transportStat),
+          inbound,
+          outbound
+        })
         return
       }
 
@@ -440,7 +522,10 @@ export class ConferenceClient {
         packetsSent: pair.packetsSent ?? null,
         packetsReceived: pair.packetsReceived ?? null,
         localCandidate: describeCandidateStats(localCandidate),
-        remoteCandidate: describeCandidateStats(remoteCandidate)
+        remoteCandidate: describeCandidateStats(remoteCandidate),
+        transport: describeTransportStats(transportStat),
+        inbound,
+        outbound
       })
     } catch (error) {
       logWarn('rtc', 'peer stats snapshot failed', {
@@ -543,6 +628,7 @@ export class ConferenceClient {
     )
 
     if (desiredTracks.length === 0) {
+      logInfo('rtc', 'local preview stream cleared')
       this.localPreviewStream = null
       this.events.onLocalStream?.(null)
       return
@@ -550,10 +636,19 @@ export class ConferenceClient {
 
     if (!this.localPreviewStream) {
       this.localPreviewStream = new MediaStream()
+      logInfo('rtc', 'local preview stream created')
     }
 
     syncPreviewTrack(this.localPreviewStream, 'audio', this.localAudioTrack)
     syncPreviewTrack(this.localPreviewStream, 'video', preferredVideoTrack)
+    logInfo('rtc', 'local preview stream published', {
+      trackIds: this.localPreviewStream.getTracks().map((track) => ({
+        id: track.id,
+        kind: track.kind,
+        enabled: track.enabled,
+        readyState: track.readyState
+      }))
+    })
     this.events.onLocalStream?.(this.localPreviewStream)
   }
 }
@@ -613,5 +708,78 @@ function describeCandidateStats(stat: RTCStats | null) {
     relayProtocol: candidate.relayProtocol ?? null,
     networkType: candidate.networkType ?? null,
     url: candidate.url ?? null
+  }
+}
+
+function describeTransportStats(stat: RTCStats | null) {
+  if (!stat) {
+    return null
+  }
+
+  const transport = stat as RTCStats & {
+    dtlsState?: string
+    iceState?: string
+    bytesReceived?: number
+    bytesSent?: number
+    packetsReceived?: number
+    packetsSent?: number
+    selectedCandidatePairId?: string
+  }
+
+  return {
+    dtlsState: transport.dtlsState ?? null,
+    iceState: transport.iceState ?? null,
+    bytesReceived: transport.bytesReceived ?? null,
+    bytesSent: transport.bytesSent ?? null,
+    packetsReceived: transport.packetsReceived ?? null,
+    packetsSent: transport.packetsSent ?? null,
+    selectedCandidatePairId: transport.selectedCandidatePairId ?? null
+  }
+}
+
+function describeMediaFlowStats(stat: RTCStats) {
+  const flow = stat as RTCStats & {
+    kind?: string
+    mediaType?: string
+    mid?: string
+    bytesReceived?: number
+    bytesSent?: number
+    packetsReceived?: number
+    packetsSent?: number
+    framesDecoded?: number
+    framesReceived?: number
+    framesEncoded?: number
+    frameWidth?: number
+    frameHeight?: number
+    jitter?: number
+    trackIdentifier?: string
+    decoderImplementation?: string
+    encoderImplementation?: string
+    pliCount?: number
+    firCount?: number
+    nackCount?: number
+  }
+
+  return {
+    id: flow.id,
+    type: flow.type,
+    kind: flow.kind ?? flow.mediaType ?? null,
+    mid: flow.mid ?? null,
+    bytesReceived: flow.bytesReceived ?? null,
+    bytesSent: flow.bytesSent ?? null,
+    packetsReceived: flow.packetsReceived ?? null,
+    packetsSent: flow.packetsSent ?? null,
+    framesDecoded: flow.framesDecoded ?? null,
+    framesReceived: flow.framesReceived ?? null,
+    framesEncoded: flow.framesEncoded ?? null,
+    frameWidth: flow.frameWidth ?? null,
+    frameHeight: flow.frameHeight ?? null,
+    jitter: flow.jitter ?? null,
+    trackIdentifier: flow.trackIdentifier ?? null,
+    decoderImplementation: flow.decoderImplementation ?? null,
+    encoderImplementation: flow.encoderImplementation ?? null,
+    pliCount: flow.pliCount ?? null,
+    firCount: flow.firCount ?? null,
+    nackCount: flow.nackCount ?? null
   }
 }
