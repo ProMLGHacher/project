@@ -21,7 +21,8 @@ describe('ParticipantGrid', () => {
       <ParticipantGrid
         participants={participants}
         localParticipantId="participant-2"
-        streams={{ 'participant-1': {} as MediaStream }}
+        localStream={null}
+        remoteStreams={{ 'participant-1': {} as MediaStream }}
       />
     )
 
@@ -47,7 +48,8 @@ describe('ParticipantGrid', () => {
       <ParticipantGrid
         participants={participants}
         localParticipantId="participant-1"
-        streams={{ 'participant-1': {} as MediaStream }}
+        localStream={{} as MediaStream}
+        remoteStreams={{}}
       />
     )
 

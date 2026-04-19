@@ -470,19 +470,36 @@ export class ConferenceClient {
   }
 
   private publishLocalStream() {
-    const next = new MediaStream()
-
-    if (this.localAudioTrack) {
-      next.addTrack(this.localAudioTrack)
-    }
-
     const preferredVideoTrack = this.localScreenTrack ?? this.localCameraTrack
-    if (preferredVideoTrack) {
-      next.addTrack(preferredVideoTrack)
+    const desiredTracks = [this.localAudioTrack, preferredVideoTrack].filter(
+      (track): track is MediaStreamTrack => Boolean(track)
+    )
+
+    if (desiredTracks.length === 0) {
+      this.localPreviewStream = null
+      this.events.onLocalStream?.(null)
+      return
     }
 
-    this.localPreviewStream = next.getTracks().length > 0 ? next : null
+    if (!this.localPreviewStream) {
+      this.localPreviewStream = new MediaStream()
+    }
+
+    syncPreviewTrack(this.localPreviewStream, 'audio', this.localAudioTrack)
+    syncPreviewTrack(this.localPreviewStream, 'video', preferredVideoTrack)
     this.events.onLocalStream?.(this.localPreviewStream)
+  }
+}
+
+function syncPreviewTrack(stream: MediaStream, kind: 'audio' | 'video', nextTrack: MediaStreamTrack | null) {
+  for (const track of stream.getTracks()) {
+    if (track.kind === kind && track !== nextTrack) {
+      stream.removeTrack(track)
+    }
+  }
+
+  if (nextTrack && !stream.getTracks().includes(nextTrack)) {
+    stream.addTrack(nextTrack)
   }
 }
 

@@ -29,7 +29,8 @@ export function RoomPage() {
   const [prejoinLoading, setPrejoinLoading] = useState(false)
   const [activeSession, setActiveSession] = useState<JoinResponse | null>(null)
   const [participants, setParticipants] = useState<ParticipantMap>({})
-  const [streams, setStreams] = useState<Record<string, MediaStream>>({})
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({})
   const [connectionState, setConnectionState] = useState('idle')
   const [diagnostics, setDiagnostics] = useState<ConferenceDiagnostics | null>(null)
   const [roomError, setRoomError] = useState<string | null>(null)
@@ -46,7 +47,8 @@ export function RoomPage() {
     setRoomError(null)
     setActiveSession(null)
     setParticipants({})
-    setStreams({})
+    setLocalStream(null)
+    setRemoteStreams({})
     setConnectionState('idle')
     setDiagnostics(null)
     setActionStatus('Check your setup before joining.')
@@ -95,7 +97,8 @@ export function RoomPage() {
     }
 
     setParticipants(indexParticipants(activeSession.snapshot))
-    setStreams({})
+    setLocalStream(null)
+    setRemoteStreams({})
     setDiagnostics(null)
     setConnectionState('connecting')
 
@@ -122,7 +125,7 @@ export function RoomPage() {
     const client = new ConferenceClient({
       onSnapshot: (snapshot) => {
         setParticipants(indexParticipants(snapshot))
-        setStreams((current) => {
+        setRemoteStreams((current) => {
           const activeParticipantIds = new Set(snapshot.participants.map((participant) => participant.id))
           return Object.fromEntries(
             Object.entries(current).filter(([participantId]) => activeParticipantIds.has(participantId))
@@ -131,20 +134,10 @@ export function RoomPage() {
       },
       onSlotUpdated: (payload) => setParticipants((current) => patchParticipantSlot(current, payload)),
       onRemoteTrack: (participantId, _kind, stream) => {
-        setStreams((current) => ({ ...current, [participantId]: stream }))
+        setRemoteStreams((current) => ({ ...current, [participantId]: stream }))
       },
       onLocalStream: (stream) => {
-        setStreams((current) => {
-          if (!stream) {
-            const { [activeSession.participantId]: _removed, ...rest } = current
-            return rest
-          }
-
-          return {
-            ...current,
-            [activeSession.participantId]: stream
-          }
-        })
+        setLocalStream(stream)
       },
       onStateChange: setConnectionState,
       onDiagnostics: setDiagnostics,
@@ -184,7 +177,7 @@ export function RoomPage() {
     ? participantList.filter((participant) => participant.id !== activeSession.participantId)
     : []
   const participantNames = participantList.map((participant) => participant.displayName).join(', ')
-  const visibleRemoteStreams = otherParticipants.filter((participant) => Boolean(streams[participant.id])).length
+  const visibleRemoteStreams = otherParticipants.filter((participant) => Boolean(remoteStreams[participant.id])).length
 
   async function handleJoin(payload: { displayName: string; micEnabled: boolean; cameraEnabled: boolean }) {
     setPrejoinLoading(true)
@@ -339,7 +332,8 @@ export function RoomPage() {
     clientRef.current = null
     setActiveSession(null)
     setParticipants({})
-    setStreams({})
+    setLocalStream(null)
+    setRemoteStreams({})
     navigate('/')
   }
 
@@ -468,7 +462,12 @@ export function RoomPage() {
         </CardContent>
       </Card>
 
-      <ParticipantGrid participants={participantList} localParticipantId={activeSession.participantId} streams={streams} />
+      <ParticipantGrid
+        participants={participantList}
+        localParticipantId={activeSession.participantId}
+        localStream={localStream}
+        remoteStreams={remoteStreams}
+      />
 
       <div className="sticky bottom-4 flex justify-center">
         <ControlBar

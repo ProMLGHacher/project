@@ -129,6 +129,9 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 
 	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		log.Printf("[sfu] publisher-ice-state participant_id=%s state=%s", participantID, state.String())
+		if state == webrtc.ICEConnectionStateDisconnected || state == webrtc.ICEConnectionStateFailed {
+			log.Printf("[sfu] publisher-ice-degraded participant_id=%s state=%s", participantID, state.String())
+		}
 	})
 
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
@@ -197,6 +200,9 @@ func (s *SFU) EnsureSubscriber(roomID, participantID string) (*SubscriberPeer, e
 
 	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		log.Printf("[sfu] subscriber-ice-state participant_id=%s state=%s", participantID, state.String())
+		if state == webrtc.ICEConnectionStateDisconnected || state == webrtc.ICEConnectionStateFailed {
+			log.Printf("[sfu] subscriber-ice-degraded participant_id=%s state=%s", participantID, state.String())
+		}
 	})
 
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
@@ -419,7 +425,17 @@ func (s *SFU) RemoveParticipant(participantID string) error {
 }
 
 func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, remote *webrtc.TrackRemote) error {
-	log.Printf("[sfu] publish-track room_id=%s participant_id=%s kind=%s track_id=%s stream_id=%s", roomID, participantID, kind, remote.ID(), remote.StreamID())
+	log.Printf(
+		"[sfu] publish-track room_id=%s participant_id=%s kind=%s track_id=%s stream_id=%s rid=%s ssrc=%d mime=%s",
+		roomID,
+		participantID,
+		kind,
+		remote.ID(),
+		remote.StreamID(),
+		remote.RID(),
+		remote.SSRC(),
+		remote.Codec().MimeType,
+	)
 	codec := remote.Codec().RTPCodecCapability
 	local, err := webrtc.NewTrackLocalStaticRTP(codec, string(kind), participantID)
 	if err != nil {
@@ -478,11 +494,39 @@ func (s *SFU) publishTrack(roomID, participantID string, kind domain.SlotKind, r
 	}
 
 	go func() {
+		packetCount := 0
+		totalPayloadBytes := 0
+		firstPacketLogged := false
+
 		for {
 			packet, _, err := remote.ReadRTP()
 			if err != nil {
+				log.Printf(
+					"[sfu] source-read-ended participant_id=%s kind=%s source_id=%d packets=%d payload_bytes=%d err=%v",
+					source.ParticipantID,
+					source.Kind,
+					source.ID,
+					packetCount,
+					totalPayloadBytes,
+					err,
+				)
 				_ = s.unpublishSource(source)
 				return
+			}
+			packetCount++
+			totalPayloadBytes += len(packet.Payload)
+			if !firstPacketLogged {
+				firstPacketLogged = true
+				log.Printf(
+					"[sfu] source-first-packet participant_id=%s kind=%s source_id=%d sequence=%d timestamp=%d payload_bytes=%d marker=%t",
+					source.ParticipantID,
+					source.Kind,
+					source.ID,
+					packet.SequenceNumber,
+					packet.Timestamp,
+					len(packet.Payload),
+					packet.Marker,
+				)
 			}
 			_ = local.WriteRTP(packet)
 		}
@@ -510,7 +554,14 @@ func (s *SFU) addSourceToSubscriber(subscriber *SubscriberPeer, source *SourceTr
 	isVideo := source.Remote != nil && source.Remote.Kind() == webrtc.RTPCodecTypeVideo
 	s.mu.Unlock()
 
-	log.Printf("[sfu] add-source-to-subscriber subscriber_id=%s source_participant_id=%s kind=%s", subscriber.ParticipantID, source.ParticipantID, source.Kind)
+	log.Printf(
+		"[sfu] add-source-to-subscriber subscriber_id=%s source_participant_id=%s kind=%s source_id=%d track_id=%s",
+		subscriber.ParticipantID,
+		source.ParticipantID,
+		source.Kind,
+		source.ID,
+		source.Track.ID(),
+	)
 	go s.drainSenderRTCP(subscriber.ParticipantID, source, sender)
 	if isVideo {
 		s.requestKeyframe(source.ParticipantID, source)
@@ -554,6 +605,8 @@ func (s *SFU) unpublishSource(source *SourceTrack) error {
 	}
 	s.mu.Unlock()
 
+	log.Printf("[sfu] unpublish-detach-count participant_id=%s kind=%s source_id=%d subscribers=%d", source.ParticipantID, source.Kind, source.ID, len(targets))
+
 	for _, subscriber := range targets {
 		if offer, err := s.CreateSubscriberOffer(subscriber.ParticipantID, false); err == nil && offer.Type != 0 {
 			sessionID, ok := s.lookup.SessionIDByParticipant(context.Background(), subscriber.ParticipantID)
@@ -580,19 +633,23 @@ func (s *SFU) finishNegotiation(participantID string) *webrtc.SessionDescription
 
 	peer.IsNegotiating = false
 	if !peer.PendingOffer {
+		log.Printf("[sfu] finish-negotiation participant_id=%s pending_offer=false", participantID)
 		return nil
 	}
 
 	peer.PendingOffer = false
 	offer, err := peer.PC.CreateOffer(nil)
 	if err != nil {
+		log.Printf("[sfu] finish-negotiation-create-offer-failed participant_id=%s err=%v", participantID, err)
 		return nil
 	}
 	if err := peer.PC.SetLocalDescription(offer); err != nil {
+		log.Printf("[sfu] finish-negotiation-set-local-failed participant_id=%s err=%v", participantID, err)
 		return nil
 	}
 	peer.IsNegotiating = true
 	local := *peer.PC.LocalDescription()
+	log.Printf("[sfu] finish-negotiation participant_id=%s pending_offer=true sdp_len=%d", participantID, len(local.SDP))
 	return &local
 }
 

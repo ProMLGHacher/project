@@ -4,14 +4,15 @@ import { Badge } from '@/components/ui/badge'
 interface ParticipantGridProps {
   participants: ParticipantState[]
   localParticipantId: string
-  streams: Record<string, MediaStream>
+  localStream: MediaStream | null
+  remoteStreams: Record<string, MediaStream>
 }
 
-export function ParticipantGrid({ participants, localParticipantId, streams }: ParticipantGridProps) {
+export function ParticipantGrid({ participants, localParticipantId, localStream, remoteStreams }: ParticipantGridProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {participants.map((participant) => {
-        const stream = streams[participant.id]
+        const stream = participant.id === localParticipantId ? localStream : remoteStreams[participant.id]
         const cameraSlot = participant.slots.find((slot) => slot.kind === 'camera')
         const audioSlot = participant.slots.find((slot) => slot.kind === 'audio')
         const screenSlot = participant.slots.find((slot) => slot.kind === 'screen')
