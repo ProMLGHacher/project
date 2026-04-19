@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConferenceClient, type ConferenceDiagnostics } from '@/lib/rtc/conference-client'
 import { conferenceApi } from '@/lib/api'
+import { clearClientLogs, exportClientLogsText, getClientLogs, logError, logInfo, subscribeClientLogs } from '@/lib/logger'
 import type {
   JoinResponse,
   ParticipantState,
@@ -36,6 +37,7 @@ export function RoomPage() {
   const [micEnabled, setMicEnabled] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [screenEnabled, setScreenEnabled] = useState(false)
+  const [logCount, setLogCount] = useState(() => getClientLogs().length)
 
   useEffect(() => {
     let cancelled = false
@@ -51,18 +53,21 @@ export function RoomPage() {
     setMicEnabled(true)
     setCameraEnabled(false)
     setScreenEnabled(false)
+    logInfo('room', 'loading room route', { roomId, requestedRole })
 
     async function loadRoom() {
       try {
         const metadata = await conferenceApi.getRoom(roomId)
         if (!cancelled) {
           setRoom(metadata)
+          logInfo('room', 'room metadata loaded', metadata)
         }
       } catch (error) {
         if (!cancelled) {
           setRoom(null)
           setRoomError(readableError(error))
           setActionStatus('Room is unavailable.')
+          logError('room', 'room metadata load failed', { roomId, error: readableError(error) })
         }
       } finally {
         if (!cancelled) {
@@ -77,6 +82,12 @@ export function RoomPage() {
       cancelled = true
     }
   }, [roomId])
+
+  useEffect(() => {
+    return subscribeClientLogs((nextEntries) => {
+      setLogCount(nextEntries.length)
+    })
+  }, [])
 
   useEffect(() => {
     if (!activeSession) {
@@ -188,9 +199,16 @@ export function RoomPage() {
 
       setActiveSession(result)
       setActionStatus('Joining room…')
+      logInfo('room', 'room join succeeded', {
+        roomId: result.roomId,
+        participantId: result.participantId,
+        role: result.role,
+        wsUrl: result.wsUrl
+      })
     } catch (error) {
       setRoomError(readableError(error))
       setActionStatus('Join failed.')
+      logError('room', 'room join failed', { roomId, requestedRole, error: readableError(error) })
     } finally {
       setPrejoinLoading(false)
     }
@@ -281,10 +299,38 @@ export function RoomPage() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/rooms/${roomId}`)
       setActionStatus('Room link copied.')
+      logInfo('room', 'room link copied', { roomId })
     } catch (error) {
       setRoomError(readableError(error))
       setActionStatus('Copy link failed.')
+      logError('room', 'room link copy failed', { roomId, error: readableError(error) })
     }
+  }
+
+  async function handleExportLogs() {
+    try {
+      const blob = new Blob([exportClientLogsText()], { type: 'text/plain;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = `voice-first-logs-${roomId || 'room'}.txt`
+      window.document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      setActionStatus('Client logs exported.')
+      logInfo('room', 'client logs exported', { roomId, logCount: getClientLogs().length })
+    } catch (error) {
+      setRoomError(readableError(error))
+      setActionStatus('Client log export failed.')
+      logError('room', 'client log export failed', { roomId, error: readableError(error) })
+    }
+  }
+
+  function handleClearLogs() {
+    clearClientLogs()
+    setActionStatus('Client logs cleared.')
+    logInfo('room', 'client logs cleared', { roomId })
   }
 
   function handleLeave() {
@@ -336,6 +382,7 @@ export function RoomPage() {
           <Badge>{participantList.length} participants</Badge>
           <Badge>{connectionState}</Badge>
           <Badge>{visibleRemoteStreams} remote streams</Badge>
+          <Badge>{logCount} client logs</Badge>
         </div>
       </header>
 
@@ -400,6 +447,24 @@ export function RoomPage() {
               `Last error: ${roomError ?? diagnostics?.lastError ?? 'none'}`
             ]}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Logs</CardTitle>
+          <CardDescription>
+            Export the saved client logs from this device and send me the file. This is especially useful on phones
+            where the browser console is hard to access.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <button className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground" onClick={handleExportLogs} type="button">
+            Export client logs
+          </button>
+          <button className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium" onClick={handleClearLogs} type="button">
+            Clear client logs
+          </button>
         </CardContent>
       </Card>
 

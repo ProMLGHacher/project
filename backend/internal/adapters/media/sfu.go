@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,8 +109,12 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 
 	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate == nil {
+			log.Printf("[sfu] publisher-ice-gathering-complete participant_id=%s", participantID)
 			return
 		}
+
+		candidateJSON := candidate.ToJSON()
+		log.Printf("[sfu] publisher-local-candidate participant_id=%s protocol_hint=%s candidate=%q", participantID, protocolHint(candidateJSON.Candidate), candidateJSON.Candidate)
 
 		sessionID, ok := s.lookup.SessionIDByParticipant(context.Background(), participantID)
 		if !ok {
@@ -118,8 +123,20 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 
 		_ = s.emitter.Emit(sessionID, protocol.MustEnvelope(protocol.TypeTrickleCandidate, protocol.CandidatePayload{
 			Peer:      "publisher",
-			Candidate: candidate.ToJSON(),
+			Candidate: candidateJSON,
 		}))
+	})
+
+	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+		log.Printf("[sfu] publisher-ice-state participant_id=%s state=%s", participantID, state.String())
+	})
+
+	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+		log.Printf("[sfu] publisher-connection-state participant_id=%s state=%s", participantID, state.String())
+	})
+
+	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
+		log.Printf("[sfu] publisher-signaling-state participant_id=%s state=%s", participantID, state.String())
 	})
 
 	pc.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
@@ -160,8 +177,12 @@ func (s *SFU) EnsureSubscriber(roomID, participantID string) (*SubscriberPeer, e
 
 	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate == nil {
+			log.Printf("[sfu] subscriber-ice-gathering-complete participant_id=%s", participantID)
 			return
 		}
+
+		candidateJSON := candidate.ToJSON()
+		log.Printf("[sfu] subscriber-local-candidate participant_id=%s protocol_hint=%s candidate=%q", participantID, protocolHint(candidateJSON.Candidate), candidateJSON.Candidate)
 
 		sessionID, ok := s.lookup.SessionIDByParticipant(context.Background(), participantID)
 		if !ok {
@@ -170,8 +191,20 @@ func (s *SFU) EnsureSubscriber(roomID, participantID string) (*SubscriberPeer, e
 
 		_ = s.emitter.Emit(sessionID, protocol.MustEnvelope(protocol.TypeTrickleCandidate, protocol.CandidatePayload{
 			Peer:      "subscriber",
-			Candidate: candidate.ToJSON(),
+			Candidate: candidateJSON,
 		}))
+	})
+
+	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+		log.Printf("[sfu] subscriber-ice-state participant_id=%s state=%s", participantID, state.String())
+	})
+
+	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+		log.Printf("[sfu] subscriber-connection-state participant_id=%s state=%s", participantID, state.String())
+	})
+
+	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
+		log.Printf("[sfu] subscriber-signaling-state participant_id=%s state=%s", participantID, state.String())
 	})
 
 	s.subscribers[participantID] = peer
@@ -204,7 +237,9 @@ func (s *SFU) HandlePublisherOffer(participantID string, offer webrtc.SessionDes
 		return webrtc.SessionDescription{}, fmt.Errorf("unknown publisher participant %s", participantID)
 	}
 
+	log.Printf("[sfu] handle-publisher-offer participant_id=%s type=%s sdp_len=%d", participantID, offer.Type.String(), len(offer.SDP))
 	if err := peer.PC.SetRemoteDescription(offer); err != nil {
+		log.Printf("[sfu] handle-publisher-offer-set-remote-failed participant_id=%s err=%v", participantID, err)
 		return webrtc.SessionDescription{}, err
 	}
 
@@ -213,9 +248,11 @@ func (s *SFU) HandlePublisherOffer(participantID string, offer webrtc.SessionDes
 		return webrtc.SessionDescription{}, err
 	}
 	if err := peer.PC.SetLocalDescription(answer); err != nil {
+		log.Printf("[sfu] handle-publisher-offer-set-local-failed participant_id=%s err=%v", participantID, err)
 		return webrtc.SessionDescription{}, err
 	}
 
+	log.Printf("[sfu] publisher-answer-created participant_id=%s type=%s sdp_len=%d", participantID, peer.PC.LocalDescription().Type.String(), len(peer.PC.LocalDescription().SDP))
 	return *peer.PC.LocalDescription(), nil
 }
 
@@ -227,7 +264,12 @@ func (s *SFU) HandlePublisherCandidate(participantID string, candidate webrtc.IC
 		return fmt.Errorf("unknown publisher participant %s", participantID)
 	}
 
-	return peer.PC.AddICECandidate(candidate)
+	log.Printf("[sfu] handle-publisher-candidate participant_id=%s protocol_hint=%s candidate=%q", participantID, protocolHint(candidate.Candidate), candidate.Candidate)
+	if err := peer.PC.AddICECandidate(candidate); err != nil {
+		log.Printf("[sfu] handle-publisher-candidate-failed participant_id=%s err=%v", participantID, err)
+		return err
+	}
+	return nil
 }
 
 func (s *SFU) CreateSubscriberOffer(participantID string, iceRestart bool) (webrtc.SessionDescription, error) {
@@ -238,6 +280,7 @@ func (s *SFU) CreateSubscriberOffer(participantID string, iceRestart bool) (webr
 		return webrtc.SessionDescription{}, fmt.Errorf("unknown subscriber participant %s", participantID)
 	}
 	if peer.IsNegotiating {
+		log.Printf("[sfu] create-subscriber-offer-deferred participant_id=%s ice_restart=%t", participantID, iceRestart)
 		peer.PendingOffer = true
 		s.mu.Unlock()
 		return webrtc.SessionDescription{}, nil
@@ -248,13 +291,16 @@ func (s *SFU) CreateSubscriberOffer(participantID string, iceRestart bool) (webr
 	offer, err := peer.PC.CreateOffer(&webrtc.OfferOptions{ICERestart: iceRestart})
 	if err != nil {
 		s.finishNegotiation(participantID)
+		log.Printf("[sfu] create-subscriber-offer-failed participant_id=%s ice_restart=%t err=%v", participantID, iceRestart, err)
 		return webrtc.SessionDescription{}, err
 	}
 	if err := peer.PC.SetLocalDescription(offer); err != nil {
 		s.finishNegotiation(participantID)
+		log.Printf("[sfu] set-subscriber-local-description-failed participant_id=%s ice_restart=%t err=%v", participantID, iceRestart, err)
 		return webrtc.SessionDescription{}, err
 	}
 
+	log.Printf("[sfu] subscriber-offer-created participant_id=%s ice_restart=%t sdp_len=%d", participantID, iceRestart, len(peer.PC.LocalDescription().SDP))
 	return *peer.PC.LocalDescription(), nil
 }
 
@@ -266,7 +312,9 @@ func (s *SFU) HandleSubscriberAnswer(participantID string, answer webrtc.Session
 		return nil, fmt.Errorf("unknown subscriber participant %s", participantID)
 	}
 
+	log.Printf("[sfu] handle-subscriber-answer participant_id=%s type=%s sdp_len=%d", participantID, answer.Type.String(), len(answer.SDP))
 	if err := peer.PC.SetRemoteDescription(answer); err != nil {
+		log.Printf("[sfu] handle-subscriber-answer-set-remote-failed participant_id=%s err=%v", participantID, err)
 		return nil, err
 	}
 
@@ -281,7 +329,12 @@ func (s *SFU) HandleSubscriberCandidate(participantID string, candidate webrtc.I
 		return fmt.Errorf("unknown subscriber participant %s", participantID)
 	}
 
-	return peer.PC.AddICECandidate(candidate)
+	log.Printf("[sfu] handle-subscriber-candidate participant_id=%s protocol_hint=%s candidate=%q", participantID, protocolHint(candidate.Candidate), candidate.Candidate)
+	if err := peer.PC.AddICECandidate(candidate); err != nil {
+		log.Printf("[sfu] handle-subscriber-candidate-failed participant_id=%s err=%v", participantID, err)
+		return err
+	}
+	return nil
 }
 
 func (s *SFU) AttachExistingSources(participantID string) error {
@@ -628,4 +681,19 @@ func (s *SFU) requestKeyframe(participantID string, source *SourceTrack) {
 	}
 
 	log.Printf("[sfu] request-keyframe participant_id=%s kind=%s ssrc=%d", participantID, source.Kind, source.Remote.SSRC())
+}
+
+func protocolHint(candidate string) string {
+	switch {
+	case candidate == "":
+		return "unknown"
+	case strings.Contains(candidate, " udp "):
+		return "udp"
+	case strings.Contains(candidate, " tcp "):
+		return "tcp"
+	case strings.Contains(candidate, "typ relay"):
+		return "relay"
+	default:
+		return "other"
+	}
 }
