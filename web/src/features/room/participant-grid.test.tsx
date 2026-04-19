@@ -30,7 +30,7 @@ describe('ParticipantGrid', () => {
     expect(queryByText(/screen share ready/i)).toBeNull()
   })
 
-  it('mutes the local participant audio preview', () => {
+  it('does not render a local audio element for the self-preview tile', () => {
     const participants: ParticipantState[] = [
       {
         id: 'participant-1',
@@ -54,7 +54,6 @@ describe('ParticipantGrid', () => {
     )
 
     const audio = container.querySelector('audio')
-    expect(audio).not.toBeNull()
-    expect(audio?.muted).toBe(true)
+    expect(audio).toBeNull()
   })
 })

@@ -248,6 +248,7 @@ export class ConferenceClient {
       logInfo('rtc', 'peer ice state changed', { peer, iceConnectionState: pc.iceConnectionState })
       this.events.onStateChange(pc.iceConnectionState)
       this.emitDiagnostics()
+      void this.logPeerStatsSnapshot(pc, peer, pc.iceConnectionState)
       if (peer === 'publisher' && (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
         void this.restartPublisherIce()
       }
@@ -382,6 +383,72 @@ export class ConferenceClient {
 
   private async restartPublisherIce() {
     await this.negotiatePublisher(true)
+  }
+
+  private async logPeerStatsSnapshot(
+    pc: RTCPeerConnection,
+    peer: LocalPeerKind,
+    reason: RTCIceConnectionState
+  ) {
+    if (!['checking', 'connected', 'disconnected', 'failed'].includes(reason)) {
+      return
+    }
+
+    try {
+      const report = await pc.getStats()
+      let selectedPair: RTCStats | null = null
+      const candidates = new Map<string, RTCStats>()
+
+      report.forEach((stat) => {
+        if (stat.type === 'candidate-pair' && 'selected' in stat && stat.selected) {
+          selectedPair = stat
+        }
+        if (stat.type === 'local-candidate' || stat.type === 'remote-candidate') {
+          candidates.set(stat.id, stat)
+        }
+      })
+
+      if (!selectedPair) {
+        logInfo('rtc', 'peer stats snapshot', { peer, reason, selectedPair: 'none' })
+        return
+      }
+
+      const pair = selectedPair as RTCStats & {
+        id?: string
+        state?: string
+        localCandidateId?: string
+        remoteCandidateId?: string
+        currentRoundTripTime?: number
+        availableOutgoingBitrate?: number
+        bytesReceived?: number
+        bytesSent?: number
+        packetsReceived?: number
+        packetsSent?: number
+      }
+      const localCandidate = pair.localCandidateId ? (candidates.get(pair.localCandidateId) ?? null) : null
+      const remoteCandidate = pair.remoteCandidateId ? (candidates.get(pair.remoteCandidateId) ?? null) : null
+
+      logInfo('rtc', 'peer stats snapshot', {
+        peer,
+        reason,
+        pairId: pair.id,
+        state: pair.state ?? 'unknown',
+        currentRoundTripTime: pair.currentRoundTripTime ?? null,
+        availableOutgoingBitrate: pair.availableOutgoingBitrate ?? null,
+        bytesSent: pair.bytesSent ?? null,
+        bytesReceived: pair.bytesReceived ?? null,
+        packetsSent: pair.packetsSent ?? null,
+        packetsReceived: pair.packetsReceived ?? null,
+        localCandidate: describeCandidateStats(localCandidate),
+        remoteCandidate: describeCandidateStats(remoteCandidate)
+      })
+    } catch (error) {
+      logWarn('rtc', 'peer stats snapshot failed', {
+        peer,
+        reason,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
   }
 
   private sendSlotUpdate(kind: SlotKind, enabled: boolean, publishing: boolean, trackBound: boolean) {
@@ -520,5 +587,31 @@ function describePeer(pc: RTCPeerConnection | null): PeerDiagnostics {
     signalingState: pc.signalingState,
     connectionState: pc.connectionState,
     iceConnectionState: pc.iceConnectionState
+  }
+}
+
+function describeCandidateStats(stat: RTCStats | null) {
+  if (!stat) {
+    return null
+  }
+
+  const candidate = stat as RTCStats & {
+    candidateType?: string
+    protocol?: string
+    address?: string
+    port?: number
+    relayProtocol?: string
+    networkType?: string
+    url?: string
+  }
+
+  return {
+    candidateType: candidate.candidateType ?? null,
+    protocol: candidate.protocol ?? null,
+    address: candidate.address ?? null,
+    port: candidate.port ?? null,
+    relayProtocol: candidate.relayProtocol ?? null,
+    networkType: candidate.networkType ?? null,
+    url: candidate.url ?? null
   }
 }
