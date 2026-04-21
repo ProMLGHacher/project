@@ -36,6 +36,8 @@ func NewServer(roomService *application.RoomService, coordinator *application.Si
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)
+	mux.HandleFunc("/api/openapi.json", s.handleOpenAPI)
+	mux.HandleFunc("/api/swagger", s.handleSwagger)
 	mux.HandleFunc("/api/rooms", s.handleCreateRoom)
 	mux.HandleFunc("/api/rooms/", s.handleRoomRoutes)
 	mux.HandleFunc("/api/invites/", s.handleInviteRoutes)

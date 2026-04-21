@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -222,6 +223,67 @@ func TestEndpointsPreserveForwardedHTTPSForWebSocketURLs(t *testing.T) {
 
 	if joinResponse.WSURL != "wss://kvt.araik.dev/ws?sessionId=session-1" {
 		t.Fatalf("expected ws url to preserve forwarded https, got %s", joinResponse.WSURL)
+	}
+}
+
+func TestSwaggerAndOpenAPIEndpoints(t *testing.T) {
+	roomRepo := repository.NewInMemoryRoomRepository()
+	sessionRepo := repository.NewInMemorySessionRepository()
+	clock := repository.NewFixedClock(time.Date(2026, 4, 17, 12, 0, 0, 0, time.UTC))
+	roomIDs := repository.NewDeterministicIDGenerator("river-sky-42")
+	ids := repository.NewDeterministicIDGenerator("host-seed", "participant-1", "session-1")
+	baseURL, _ := url.Parse("http://fallback.invalid")
+	invites := application.NewHMACInviteService([]byte("secret"), clock, time.Hour)
+	roomService := application.NewRoomService(roomRepo, sessionRepo, invites, clock, roomIDs, ids, baseURL, []application.ICEConfig{
+		{URLs: []string{"stun:turn.local:3478"}},
+	})
+	hub := signaling.NewHub()
+	lookup := repository.NewSessionLookup(roomRepo, sessionRepo)
+	sfu := media.NewSFU(webrtc.NewAPI(), hub, lookup)
+	coordinator := application.NewSignalingCoordinator(roomRepo, sessionRepo, hub, lookup, &mediaBridgeAdapter{sfu: sfu})
+	server := NewServer(roomService, coordinator, hub)
+
+	openAPIRecorder := httptest.NewRecorder()
+	openAPIRequest := httptest.NewRequest(http.MethodGet, "/api/openapi.json", nil)
+	server.Handler().ServeHTTP(openAPIRecorder, openAPIRequest)
+
+	if openAPIRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 on openapi, got %d", openAPIRecorder.Code)
+	}
+	if contentType := openAPIRecorder.Header().Get("Content-Type"); contentType != "application/json" {
+		t.Fatalf("expected application/json openapi content type, got %q", contentType)
+	}
+
+	var document map[string]any
+	if err := json.Unmarshal(openAPIRecorder.Body.Bytes(), &document); err != nil {
+		t.Fatalf("expected openapi response to be valid json, got %v", err)
+	}
+	if document["openapi"] != "3.1.0" {
+		t.Fatalf("expected openapi 3.1.0 document, got %v", document["openapi"])
+	}
+
+	paths, ok := document["paths"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected openapi paths object")
+	}
+	for _, path := range []string{"/api/rooms", "/api/rooms/{roomId}", "/api/rooms/{roomId}/join", "/ws"} {
+		if _, exists := paths[path]; !exists {
+			t.Fatalf("expected openapi path %s to be documented", path)
+		}
+	}
+
+	swaggerRecorder := httptest.NewRecorder()
+	swaggerRequest := httptest.NewRequest(http.MethodGet, "/api/swagger", nil)
+	server.Handler().ServeHTTP(swaggerRecorder, swaggerRequest)
+
+	if swaggerRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 on swagger, got %d", swaggerRecorder.Code)
+	}
+	if contentType := swaggerRecorder.Header().Get("Content-Type"); contentType != "text/html; charset=utf-8" {
+		t.Fatalf("expected html swagger content type, got %q", contentType)
+	}
+	if !strings.Contains(swaggerRecorder.Body.String(), "/api/openapi.json") {
+		t.Fatalf("expected swagger html to point to openapi json")
 	}
 }
 
