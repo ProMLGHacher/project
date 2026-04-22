@@ -17,7 +17,7 @@
 `useViewModel()` resolve-ит ViewModel из DI и сохраняет ее stable между re-renders.
 
 ```ts
-const viewModel = useViewModel(CounterViewModel)
+const viewModel = useViewModel(ChatViewModel)
 ```
 
 Hook вызывает `viewModel.initialize()` один раз.

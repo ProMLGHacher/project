@@ -1,6 +1,6 @@
 import { kvtFeatureRoute, kvtLayoutRoute, kvtRoute } from '@kvt/react'
-import { AppLayout, FeatureFallback } from '@/App'
-import { CounterScreen } from '@features/counter/CounterScreen'
+import { AppLayout, FeatureFallback } from '../App'
+import { HomePage } from '@features/home/presentation/view/HomePage'
 
 /**
  * Routes are now declarative framework inputs.
@@ -13,15 +13,16 @@ export const appRoutes = [
     element: <AppLayout />,
     fallback: <FeatureFallback />,
     children: [
-      kvtRoute({
-        index: true,
-        element: <CounterScreen />
-      }),
       kvtFeatureRoute({
-        path: 'reports',
-        module: () => import('@features/reports/di'),
-        component: () => import('@features/reports/ReportsPage')
+        index: true,
+        moduleKey: 'chat',
+        module: () => import('@features/chat/di'),
+        component: () => import('@features/chat/ui/ChatPage')
       })
     ]
+  }),
+  kvtRoute({
+    path: '/home',
+    element: <HomePage />
   })
 ]

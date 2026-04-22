@@ -15,11 +15,11 @@ separate UI from business logic, keep data ownership explicit, and make lifecycl
 ## Recommended screen shape
 
 ```tsx
-export function CounterScreen() {
-  const viewModel = useViewModel(CounterViewModel)
+export function ChatPage() {
+  const viewModel = useViewModel(ChatViewModel)
   const uiState = useStateFlow(viewModel.uiState)
 
-  return <button onClick={() => viewModel.onIncrementClicked()}>Count: {uiState.count}</button>
+  return <ChatLayout chats={uiState.chats} onSelectChat={(id) => viewModel.selectChat(id)} />
 }
 ```
 

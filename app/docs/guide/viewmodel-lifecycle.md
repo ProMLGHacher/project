@@ -30,9 +30,9 @@ Do not use a ViewModel for:
 `useViewModel`.
 
 ```ts
-class ReportsViewModel extends ViewModel {
+class ChatViewModel extends ViewModel {
   protected onInit() {
-    this.load()
+    this.selectInitialChat()
   }
 }
 ```

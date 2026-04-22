@@ -12,15 +12,15 @@ DI позволяет экрану запросить то, что ему нуж
 Вместо этого в компоненте:
 
 ```ts
-const repository = new CounterRepository()
-const useCase = new IncrementCounterUseCase(repository)
-const viewModel = new CounterViewModel(useCase)
+const repository = new InMemoryChatRepository()
+const useCase = new SendChatMessageUseCase(repository)
+const viewModel = new ChatViewModel(repository, useCase, ...)
 ```
 
 компонент просит только ViewModel:
 
 ```ts
-const viewModel = useViewModel(CounterViewModel)
+const viewModel = useViewModel(ChatViewModel)
 ```
 
 Container resolve-ит все остальное.
@@ -29,16 +29,16 @@ Container resolve-ит все остальное.
 
 ```ts
 @Module()
-export class CounterModule {
-  @Provides(CounterRepositoryToken)
+export class ChatModule {
+  @Provides(chatRepositoryToken)
   @Singleton({ lazy: true })
   static repository() {
-    return new InMemoryCounterRepository()
+    return new InMemoryChatRepository()
   }
 
-  @Provides(IncrementCounterUseCase)
-  static incrementUseCase(@Inject(CounterRepositoryToken) repository: CounterRepository) {
-    return new IncrementCounterUseCase(repository)
+  @Provides(SendChatMessageUseCase)
+  static sendMessage(@Inject(chatRepositoryToken) repository: ChatRepository) {
+    return new SendChatMessageUseCase(repository)
   }
 }
 ```

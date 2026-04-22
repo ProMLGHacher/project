@@ -17,7 +17,7 @@ It owns React-specific lifecycle bindings. `@kvt/core` does not import React.
 `useViewModel()` resolves a ViewModel from DI and keeps it stable across re-renders.
 
 ```ts
-const viewModel = useViewModel(CounterViewModel)
+const viewModel = useViewModel(ChatViewModel)
 ```
 
 The hook calls `viewModel.initialize()` once.

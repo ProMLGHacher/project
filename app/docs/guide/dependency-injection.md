@@ -12,15 +12,15 @@ DI lets a screen ask for the thing it needs without manually building the whole 
 Instead of doing this in a component:
 
 ```ts
-const repository = new CounterRepository()
-const useCase = new IncrementCounterUseCase(repository)
-const viewModel = new CounterViewModel(useCase)
+const repository = new InMemoryChatRepository()
+const useCase = new SendChatMessageUseCase(repository)
+const viewModel = new ChatViewModel(repository, useCase, ...)
 ```
 
 the component only asks for the ViewModel:
 
 ```ts
-const viewModel = useViewModel(CounterViewModel)
+const viewModel = useViewModel(ChatViewModel)
 ```
 
 The container resolves the rest.
@@ -29,16 +29,16 @@ The container resolves the rest.
 
 ```ts
 @Module()
-export class CounterModule {
-  @Provides(CounterRepositoryToken)
+export class ChatModule {
+  @Provides(chatRepositoryToken)
   @Singleton({ lazy: true })
   static repository() {
-    return new InMemoryCounterRepository()
+    return new InMemoryChatRepository()
   }
 
-  @Provides(IncrementCounterUseCase)
-  static incrementUseCase(@Inject(CounterRepositoryToken) repository: CounterRepository) {
-    return new IncrementCounterUseCase(repository)
+  @Provides(SendChatMessageUseCase)
+  static sendMessage(@Inject(chatRepositoryToken) repository: ChatRepository) {
+    return new SendChatMessageUseCase(repository)
   }
 }
 ```

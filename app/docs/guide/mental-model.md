@@ -13,10 +13,10 @@ KVT is intentionally small. Most concepts exist to answer one practical question
 - a `dispose()` method for shutting the runtime down.
 
 ```ts
-const runtime = createKvt({
-  modules: [counterModule]
-})
+const runtime = createKvt()
 ```
+
+Feature modules such as `chatModule` can be installed by the router when the route opens.
 
 React receives the runtime through `KvtProvider`.
 

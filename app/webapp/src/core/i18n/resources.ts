@@ -1,5 +1,5 @@
 import common from './locales/ru/common'
-import reports from './locales/ru/reports'
+import chat from './locales/ru/chat'
 
 /**
  * Default-locale resources used by i18next's official TypeScript integration.
@@ -8,8 +8,8 @@ import reports from './locales/ru/reports'
  * This object is the compile-time shape that powers useTranslation autocomplete.
  */
 const resources = {
-  common,
-  reports
+  chat,
+  common
 } as const
 
 export default resources

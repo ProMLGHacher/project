@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import { createWindowSizeClass } from './window-size'
+import type { WindowSizeClass } from './types'
 
 const fallbackWindowSizeClass = createWindowSizeClass(1024, 768)
+let cachedWindowSizeClass: WindowSizeClass | undefined
 
 function subscribeToWindowResize(onStoreChange: () => void) {
   window.addEventListener('resize', onStoreChange)
@@ -15,7 +17,19 @@ function subscribeToWindowResize(onStoreChange: () => void) {
 
 function readWindowSizeClass() {
   if (typeof window === 'undefined') return fallbackWindowSizeClass
-  return createWindowSizeClass(window.innerWidth, window.innerHeight)
+
+  const widthPx = window.innerWidth
+  const heightPx = window.innerHeight
+  if (
+    cachedWindowSizeClass &&
+    cachedWindowSizeClass.widthPx === widthPx &&
+    cachedWindowSizeClass.heightPx === heightPx
+  ) {
+    return cachedWindowSizeClass
+  }
+
+  cachedWindowSizeClass = createWindowSizeClass(widthPx, heightPx)
+  return cachedWindowSizeClass
 }
 
 export function useWindowSizeClass() {

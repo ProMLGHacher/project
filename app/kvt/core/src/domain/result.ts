@@ -10,7 +10,7 @@ export interface Err<E> {
   readonly error: E
 }
 
-export type AsyncResult<T, E = Error> = Promise<Result<T, E>>
+export type PromiseResult<T, E = Error> = Promise<Result<T, E>>
 
 export function ok<T>(value: T): Ok<T> {
   return { ok: true, value }

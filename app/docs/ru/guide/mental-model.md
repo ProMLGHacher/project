@@ -13,10 +13,10 @@ KVT намеренно маленький. Большинство концепц
 - `dispose()` method для shutdown runtime.
 
 ```ts
-const runtime = createKvt({
-  modules: [counterModule]
-})
+const runtime = createKvt()
 ```
+
+Feature modules вроде `chatModule` могут устанавливаться router-ом при открытии route.
 
 React получает runtime через `KvtProvider`.
 

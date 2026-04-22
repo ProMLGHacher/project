@@ -20,12 +20,13 @@ const disposable = flow.subscribe((value) => {
 `StateFlow<T>` — Flow с current value. Лучше всего подходит для UI state.
 
 ```ts
-type CounterUiState = {
-  count: number
+type ChatUiState = {
+  selectedChatId: string | null
+  chats: readonly ChatListItem[]
 }
 
-class CounterViewModel extends ViewModel {
-  private readonly state = new MutableStateFlow<CounterUiState>({ count: 0 })
+class ChatViewModel extends ViewModel {
+  private readonly state = new MutableStateFlow<ChatUiState>({ selectedChatId: null, chats: [] })
   readonly uiState = this.state.asStateFlow()
 }
 ```

@@ -17,7 +17,7 @@ export function AppLayout() {
         >
           {t('nav.brand')}
         </KvtLink>
-        <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
+        <div className="flex items-center justify-end gap-3 text-sm">
           <KvtLink
             className={buttonClassName({
               variant: 'outline',
@@ -27,16 +27,6 @@ export function AppLayout() {
             to="/"
           >
             {t('nav.main')}
-          </KvtLink>
-          <KvtLink
-            className={buttonClassName({
-              variant: 'outline',
-              size: 'sm',
-              className: 'rounded-full bg-surface'
-            })}
-            to="/reports"
-          >
-            {t('nav.reports')}
           </KvtLink>
           <NativeSelect
             aria-label={t('nav.language')}

@@ -4,15 +4,12 @@ import { KvtProvider, KvtRouterProvider } from '@kvt/react'
 import { KvtThemeProvider } from '@kvt/theme'
 import { Suspense } from 'react'
 import { initI18n } from '@core/i18n/config'
-import { counterModule } from '@features/counter/di'
 import './styles/index.css'
 import { appRoutes } from './router'
 
 initI18n()
 
-const runtime = createKvt({
-  modules: [counterModule]
-})
+const runtime = createKvt()
 
 createRoot(document.getElementById('root')!).render(
   <KvtThemeProvider>

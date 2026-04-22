@@ -20,12 +20,13 @@ Every subscription returns a `Disposable`.
 `StateFlow<T>` is a Flow with a current value. It is best for UI state.
 
 ```ts
-type CounterUiState = {
-  count: number
+type ChatUiState = {
+  selectedChatId: string | null
+  chats: readonly ChatListItem[]
 }
 
-class CounterViewModel extends ViewModel {
-  private readonly state = new MutableStateFlow<CounterUiState>({ count: 0 })
+class ChatViewModel extends ViewModel {
+  private readonly state = new MutableStateFlow<ChatUiState>({ selectedChatId: null, chats: [] })
   readonly uiState = this.state.asStateFlow()
 }
 ```

@@ -30,9 +30,9 @@ ViewModel хранит presentation state и переживает React re-rende
 resolve-ится через `useViewModel`.
 
 ```ts
-class ReportsViewModel extends ViewModel {
+class ChatViewModel extends ViewModel {
   protected onInit() {
-    this.load()
+    this.selectInitialChat()
   }
 }
 ```

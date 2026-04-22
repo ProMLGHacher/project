@@ -66,12 +66,12 @@ Data layer реализует repository contracts и общается с вне
 ## Рекомендуемая структура feature
 
 ```text
-features/counter/
+features/chat/
   data.ts
   domain.ts
   presentation.ts
   di.ts
-  CounterScreen.tsx
+  ui/ChatPage.tsx
 ```
 
 Это похоже на Android-style feature organization, но без необходимости заводить отдельный файл под

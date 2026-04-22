@@ -66,12 +66,12 @@ Use this layer for:
 ## Recommended feature structure
 
 ```text
-features/counter/
+features/chat/
   data.ts
   domain.ts
   presentation.ts
   di.ts
-  CounterScreen.tsx
+  ui/ChatPage.tsx
 ```
 
 This mirrors Android-style feature organization without requiring one folder per tiny class.
