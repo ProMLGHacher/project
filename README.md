@@ -4,15 +4,16 @@ Isolated greenfield workspace for a voice-first SFU conferencing stack.
 
 ## Layout
 
-- `web` - React + TypeScript client with prejoin, room UI, and WebRTC orchestration.
+- `app/webapp` - React + TypeScript client with prejoin, room UI, and WebRTC orchestration.
+- `app/kvt` - local KVT framework packages used by the client.
 - `backend` - Go + Pion SFU, signaling, room management, and HTTP API.
 - `deploy` - local development infrastructure for TURN and environment wiring.
 
 ## Local Commands
 
-- `npm --prefix web install`
-- `npm --prefix web run dev`
-- `npm --prefix web run test`
+- `npm --prefix app install`
+- `npm --prefix app run dev -w webapp`
+- `npm run lint`
 - `cd backend && go test ./...`
 
 ## Notes

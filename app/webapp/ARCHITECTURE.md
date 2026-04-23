@@ -1,6 +1,6 @@
 # Webapp Business Architecture
 
-This app follows feature-oriented clean architecture. The root `web` app is the behavioral source for the voice-first conference product, while this `app/webapp` layer describes the same business logic with explicit feature and capability boundaries.
+This app follows feature-oriented clean architecture. The `app/webapp` layer is the product client for the voice-first conference experience, with explicit feature and capability boundaries.
 
 ## Layers
 
