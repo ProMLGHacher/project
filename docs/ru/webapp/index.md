@@ -10,12 +10,11 @@ conventions мы соблюдаем при разработке features.
 1. Прочитай [Архитектуру](./architecture.md), чтобы понять feature и capability boundaries.
 2. Прочитай [Конвенции](./conventions.md) перед изменениями presentation/domain/data кода.
 3. Прочитай [Локальную разработку](./local-development.md) перед запуском стека.
-4. Прочитай [Backend](./backend.md) перед изменением API, signaling или SFU кода.
-5. Прочитай [Production deploy](./production-deploy.md) и
+4. Прочитай [Production deploy](./production-deploy.md) и
    [Environment variables](./environment.md) перед настройкой сервера.
-6. Прочитай [Дизайн-систему](./design-system.md) перед созданием UI.
-7. Прочитай [Интернационализацию](./i18n.md) перед добавлением user-facing copy.
-8. Прочитай [Адаптивные layouts](./adaptive-layouts.md) перед изменением responsive screens.
+5. Прочитай [Дизайн-систему](./design-system.md) перед созданием UI.
+6. Прочитай [Интернационализацию](./i18n.md) перед добавлением user-facing copy.
+7. Прочитай [Адаптивные layouts](./adaptive-layouts.md) перед изменением responsive screens.
 
 ## Карта проекта
 
@@ -48,7 +47,6 @@ npm --prefix app run dev -w webapp
 
 - feature folder conventions;
 - local development setup;
-- backend API/SFU ownership;
 - production deploy flow;
 - environment variables;
 - product design-system rules;
@@ -59,3 +57,5 @@ npm --prefix app run dev -w webapp
 
 Для framework primitives вроде DI, ViewModels, Flow, routing и theme packages смотри
 [KVT framework docs](../kvt/guide/index.md).
+
+Для API/signaling/SFU архитектуры backend и runtime-модели смотри [Backend docs](../backend/index.md).

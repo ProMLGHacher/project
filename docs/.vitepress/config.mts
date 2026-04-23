@@ -12,13 +12,16 @@ export default defineConfig({
       description: 'KVT framework and webapp onboarding documentation',
       themeConfig: {
         nav: [
+          { text: 'Project', link: '/project/overview' },
           { text: 'KVT', link: '/kvt/guide/' },
           { text: 'Webapp', link: '/webapp/' },
-          { text: 'Android Docs', link: 'https://developer.android.com/topic/architecture' }
+          { text: 'Backend', link: '/backend/' }
         ],
         sidebar: {
+          '/project/': createEnglishProjectSidebar(),
           '/kvt/': createEnglishKvtSidebar(),
-          '/webapp/': createEnglishWebappSidebar()
+          '/webapp/': createEnglishWebappSidebar(),
+          '/backend/': createEnglishBackendSidebar()
         },
         editLink: {
           pattern: ''
@@ -32,13 +35,16 @@ export default defineConfig({
       description: 'Документация KVT framework и webapp onboarding',
       themeConfig: {
         nav: [
+          { text: 'Проект', link: '/ru/project/overview' },
           { text: 'KVT', link: '/ru/kvt/guide/' },
           { text: 'Webapp', link: '/ru/webapp/' },
-          { text: 'Android Docs', link: 'https://developer.android.com/topic/architecture' }
+          { text: 'Backend', link: '/ru/backend/' }
         ],
         sidebar: {
+          '/ru/project/': createRussianProjectSidebar(),
           '/ru/kvt/': createRussianKvtSidebar(),
-          '/ru/webapp/': createRussianWebappSidebar()
+          '/ru/webapp/': createRussianWebappSidebar(),
+          '/ru/backend/': createRussianBackendSidebar()
         },
         outline: {
           label: 'На этой странице'
@@ -123,6 +129,19 @@ function createEnglishKvtSidebar() {
   ]
 }
 
+function createEnglishProjectSidebar() {
+  return [
+    {
+      text: 'Project Onboarding',
+      items: [
+        { text: 'Overview', link: '/project/overview' },
+        { text: 'Service Interactions', link: '/project/service-interactions' },
+        { text: 'Onboarding Path', link: '/project/onboarding-path' }
+      ]
+    }
+  ]
+}
+
 function createEnglishWebappSidebar() {
   return [
     {
@@ -135,9 +154,8 @@ function createEnglishWebappSidebar() {
       ]
     },
     {
-      text: 'Backend and Deploy',
+      text: 'Runtime and Deploy',
       items: [
-        { text: 'Backend', link: '/webapp/backend' },
         { text: 'Production Deploy', link: '/webapp/production-deploy' },
         { text: 'Environment Variables', link: '/webapp/environment' }
       ]
@@ -149,6 +167,15 @@ function createEnglishWebappSidebar() {
         { text: 'Internationalization', link: '/webapp/i18n' },
         { text: 'Adaptive Layouts', link: '/webapp/adaptive-layouts' }
       ]
+    }
+  ]
+}
+
+function createEnglishBackendSidebar() {
+  return [
+    {
+      text: 'Backend',
+      items: [{ text: 'Overview', link: '/backend/' }]
     }
   ]
 }
@@ -185,6 +212,19 @@ function createRussianKvtSidebar() {
   ]
 }
 
+function createRussianProjectSidebar() {
+  return [
+    {
+      text: 'Онбординг проекта',
+      items: [
+        { text: 'Обзор', link: '/ru/project/overview' },
+        { text: 'Взаимодействие сервисов', link: '/ru/project/service-interactions' },
+        { text: 'Маршрут онбординга', link: '/ru/project/onboarding-path' }
+      ]
+    }
+  ]
+}
+
 function createRussianWebappSidebar() {
   return [
     {
@@ -197,9 +237,8 @@ function createRussianWebappSidebar() {
       ]
     },
     {
-      text: 'Backend и Deploy',
+      text: 'Runtime и Deploy',
       items: [
-        { text: 'Backend', link: '/ru/webapp/backend' },
         { text: 'Production deploy', link: '/ru/webapp/production-deploy' },
         { text: 'Environment variables', link: '/ru/webapp/environment' }
       ]
@@ -211,6 +250,15 @@ function createRussianWebappSidebar() {
         { text: 'Интернационализация', link: '/ru/webapp/i18n' },
         { text: 'Адаптивные layouts', link: '/ru/webapp/adaptive-layouts' }
       ]
+    }
+  ]
+}
+
+function createRussianBackendSidebar() {
+  return [
+    {
+      text: 'Backend',
+      items: [{ text: 'Обзор', link: '/ru/backend/' }]
     }
   ]
 }

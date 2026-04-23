@@ -4,9 +4,9 @@
   "scripts": {
     "build": "npm --prefix app run build",
     "dev": "npm --prefix app run dev -w webapp",
-    "docs:dev": "npm --prefix app run docs:dev",
-    "docs:build": "npm --prefix app run docs:build",
-    "docs:preview": "npm --prefix app run docs:preview",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "format": "prettier --write . && gofmt -w backend",
     "format:check": "prettier --check .",
     "lint": "npm --prefix app run lint -w webapp && cd backend && go test ./...",
@@ -14,6 +14,7 @@
     "test": "npm run lint"
   },
   "devDependencies": {
-    "prettier": "^3.8.3"
+    "prettier": "^3.8.3",
+    "vitepress": "^1.6.4"
   }
 }
