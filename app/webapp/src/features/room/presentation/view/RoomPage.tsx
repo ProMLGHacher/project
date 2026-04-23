@@ -56,7 +56,7 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
   })
 
   return (
-    <section className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-4 px-4 pb-4 md:px-6">
+    <section className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-3 px-3 pb-4 sm:gap-4 sm:px-4 md:px-6">
       <RoomHeader
         actionStatus={uiState.actionStatus}
         participantCount={uiState.participants.length}
@@ -72,11 +72,16 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
 
       <div
         className={cn(
-          'grid min-h-0 flex-1 gap-4',
+          'grid min-h-0 flex-1 gap-3 sm:gap-4',
           uiState.technicalInfoVisible ? 'xl:grid-cols-4' : 'grid-cols-1'
         )}
       >
-        <main className={cn('grid min-h-0 gap-4', uiState.technicalInfoVisible && 'xl:col-span-3')}>
+        <main
+          className={cn(
+            'grid min-h-0 gap-3 sm:gap-4',
+            uiState.technicalInfoVisible && 'xl:col-span-3'
+          )}
+        >
           <ParticipantGrid
             localParticipantId={uiState.localParticipantId}
             localStream={uiState.localStream}
@@ -143,27 +148,32 @@ function RoomHeader({
 
   return (
     <Card className="rounded-4xl">
-      <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+      <CardContent className="flex flex-col gap-4 p-3 sm:p-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={status === 'connected' ? 'success' : 'default'}>{status}</Badge>
             <Badge>{t('room.header.participants', { count: participantCount })}</Badge>
           </div>
-          <h1 className="mt-2 truncate font-display text-2xl font-black tracking-tight md:text-3xl">
+          <h1 className="mt-2 break-words font-display text-xl font-black tracking-tight sm:text-2xl md:text-3xl">
             {t('room.header.title', { roomId })}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{tx(actionStatus)}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <label className="col-span-2 flex items-center justify-center gap-2 rounded-full border border-border bg-muted px-3 py-2 text-sm sm:col-span-1">
             <Switch checked={technicalInfoVisible} onCheckedChange={onTechnicalInfoChange} />
             {t('room.header.techInfo')}
           </label>
-          <Button onClick={onCopy} type="button" variant="outline">
+          <Button className="w-full sm:w-auto" onClick={onCopy} type="button" variant="outline">
             {t('room.header.copyLink')}
           </Button>
-          <Button onClick={onLeave} type="button" variant="destructive">
+          <Button
+            className="w-full sm:w-auto"
+            onClick={onLeave}
+            type="button"
+            variant="destructive"
+          >
             {t('room.header.leave')}
           </Button>
         </div>
@@ -202,13 +212,15 @@ function ParticipantGrid({
 
   return (
     <ScrollArea className="min-h-0 rounded-4xl">
-      <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {participants.map((participant) => (
           <ParticipantTile
             key={participant.id}
             local={participant.id === localParticipantId}
             participant={participant}
-            stream={participant.id === localParticipantId ? localStream : remoteStreams[participant.id]}
+            stream={
+              participant.id === localParticipantId ? localStream : remoteStreams[participant.id]
+            }
             t={t}
           />
         ))}
@@ -264,14 +276,14 @@ function ParticipantTile({
           <ParticipantAudio participantId={participant.id} stream={stream} />
         )}
       </div>
-      <CardContent className="flex items-center justify-between gap-3 p-4">
+      <CardContent className="flex items-center justify-between gap-3 p-3 sm:p-4">
         <div className="min-w-0">
           <p className="truncate font-bold">{participant.displayName}</p>
           <p className="text-xs text-muted-foreground">
             {t(`room.participant.roles.${participant.role}`)}
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           <SlotBadge enabled={audioOn} label={t('room.participant.mic')} />
           <SlotBadge enabled={cameraOn} label={t('room.participant.cam')} />
         </div>
@@ -308,13 +320,7 @@ const ParticipantVideo = memo(function ParticipantVideo({
   }, [participantId, stream, isLocal])
 
   return (
-    <video
-      autoPlay
-      className="h-full w-full object-cover"
-      muted={muted}
-      playsInline
-      ref={ref}
-    />
+    <video autoPlay className="h-full w-full object-cover" muted={muted} playsInline ref={ref} />
   )
 })
 
@@ -367,16 +373,16 @@ function ControlBar({
   t
 }: ControlBarProps) {
   return (
-    <Card className="rounded-4xl">
-      <CardContent className="flex flex-wrap items-center justify-center gap-3 p-4">
-        <ButtonGroup>
-          <Toggle aria-pressed={microphoneEnabled} onClick={onMicrophone}>
+    <Card className="sticky bottom-3 z-20 rounded-4xl sm:static">
+      <CardContent className="p-2 sm:p-4">
+        <ButtonGroup className="grid w-full grid-cols-1 gap-1 sm:inline-flex sm:w-auto">
+          <Toggle className="w-full px-2" aria-pressed={microphoneEnabled} onClick={onMicrophone}>
             {microphoneEnabled ? t('room.controls.mute') : t('room.controls.unmute')}
           </Toggle>
-          <Toggle aria-pressed={cameraEnabled} onClick={onCamera}>
+          <Toggle className="w-full px-2" aria-pressed={cameraEnabled} onClick={onCamera}>
             {cameraEnabled ? t('room.controls.cameraOff') : t('room.controls.cameraOn')}
           </Toggle>
-          <Toggle aria-pressed={screenEnabled} onClick={onScreen}>
+          <Toggle className="w-full px-2" aria-pressed={screenEnabled} onClick={onScreen}>
             {screenEnabled ? t('room.controls.stopShare') : t('room.controls.shareScreen')}
           </Toggle>
         </ButtonGroup>
@@ -403,10 +409,10 @@ function TechnicalPanel({
 }) {
   return (
     <Card className="min-h-0 rounded-4xl">
-      <CardHeader>
+      <CardHeader className="p-4 sm:p-5">
         <CardTitle>{t('room.tech.title')}</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid gap-3 p-3 sm:gap-4 sm:p-5">
         {diagnostics ? (
           <>
             <DiagnosticGroup title={t('room.tech.room')} values={diagnostics.room} />
@@ -419,7 +425,7 @@ function TechnicalPanel({
             <AlertDescription>{t('room.tech.noDiagnostics')}</AlertDescription>
           </Alert>
         )}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Button onClick={onExportLogs} type="button" variant="outline">
             {t('room.tech.export')}
           </Button>

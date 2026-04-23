@@ -10,20 +10,20 @@ export function AppLayout() {
   const tx = t as unknown as (key: string) => string
 
   return (
-    <main className="flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
-      <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+    <main className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground">
+      <nav className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
         <KvtLink
-          className="text-left text-sm font-semibold uppercase tracking-widest text-primary"
+          className="self-start text-left text-sm font-semibold uppercase tracking-widest text-primary sm:self-auto"
           to="/"
         >
           {t('nav.brand')}
         </KvtLink>
-        <div className="flex items-center justify-end gap-3 text-sm">
+        <div className="grid w-full grid-cols-2 gap-2 text-sm sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-3">
           <KvtLink
             className={buttonClassName({
               variant: 'outline',
               size: 'sm',
-              className: 'rounded-full bg-surface'
+              className: 'justify-center rounded-full bg-surface'
             })}
             to="/"
           >
@@ -31,7 +31,7 @@ export function AppLayout() {
           </KvtLink>
           <NativeSelect
             aria-label={t('nav.language')}
-            className="w-auto rounded-full px-4"
+            className="w-full rounded-full px-4 sm:w-auto"
             value={i18n.language}
             onChange={(event) => void setLanguage(event.target.value as SupportedLanguage)}
           >
@@ -42,7 +42,7 @@ export function AppLayout() {
             ))}
           </NativeSelect>
           <Button
-            className="rounded-full bg-surface"
+            className="col-span-2 rounded-full bg-surface sm:col-span-1"
             onClick={toggleMode}
             size="sm"
             type="button"

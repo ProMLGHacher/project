@@ -59,15 +59,18 @@ export function PrejoinModal({
   }, [uiState.preview?.stream])
 
   return (
-    <Dialog className="max-w-4xl rounded-4xl p-0" open={open}>
+    <Dialog
+      className="max-h-dvh max-w-4xl overflow-y-auto rounded-3xl p-0 sm:rounded-4xl"
+      open={open}
+    >
       <div className="grid overflow-hidden md:grid-cols-2">
-        <section className="bg-muted/60 p-5 md:p-6">
-          <div className="flex items-center justify-between gap-3">
+        <section className="bg-muted/60 p-4 sm:p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Badge variant="info">{t('prejoin.badge')}</Badge>
-            <Badge>{uiState.roomId}</Badge>
+            <Badge className="max-w-full truncate">{uiState.roomId}</Badge>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-slate-950">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-slate-950 sm:mt-5">
             {uiState.cameraEnabled ? (
               <VideoAspectRatio
                 ref={previewRef}
@@ -75,7 +78,7 @@ export function PrejoinModal({
                 autoPlay
                 muted
                 playsInline
-                className="aspect-video rounded-none object-cover"
+                className="aspect-video max-h-80 rounded-none object-cover md:max-h-none"
               />
             ) : (
               <div className="grid aspect-video place-items-center p-8 text-center text-slate-300">
@@ -90,9 +93,9 @@ export function PrejoinModal({
           </div>
         </section>
 
-        <section className="p-5 md:p-6">
+        <section className="p-4 sm:p-5 md:p-6">
           <DialogHeader>
-            <h2 className="font-display text-2xl font-black tracking-tight">
+            <h2 className="font-display text-xl font-black tracking-tight sm:text-2xl">
               {t('prejoin.title')}
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -100,7 +103,7 @@ export function PrejoinModal({
             </p>
           </DialogHeader>
 
-          <div className="grid gap-5">
+          <div className="grid gap-4 sm:gap-5">
             <Field>
               <Label htmlFor="display-name">{t('prejoin.nameLabel')}</Label>
               <Input
@@ -138,7 +141,7 @@ export function PrejoinModal({
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <Field>
                 <Label htmlFor="microphone">{t('prejoin.microphone')}</Label>
                 <NativeSelect

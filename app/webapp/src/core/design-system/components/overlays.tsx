@@ -10,14 +10,14 @@ export function Dialog({
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"
+      className="fixed inset-0 z-50 grid items-start overflow-y-auto bg-slate-950/50 p-3 sm:place-items-center sm:p-4"
       role="presentation"
     >
       <div
         role="dialog"
         aria-modal="true"
         className={cn(
-          'w-full max-w-lg rounded-2xl border border-border bg-surface p-5 text-surface-foreground shadow-lg',
+          'my-3 w-full max-w-lg rounded-2xl border border-border bg-surface p-5 text-surface-foreground shadow-lg sm:my-0',
           className
         )}
         {...props}

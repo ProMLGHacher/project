@@ -36,23 +36,23 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   })
 
   return (
-    <section className="mx-auto grid min-h-full w-full max-w-6xl place-items-center px-6 pb-10">
-      <div className="grid w-full gap-6 lg:grid-cols-5 lg:items-center">
+    <section className="mx-auto grid min-h-full w-full max-w-6xl items-start px-4 pb-8 sm:px-6 sm:pb-10 lg:place-items-center">
+      <div className="grid w-full gap-4 sm:gap-6 lg:grid-cols-5 lg:items-center">
         <Card className="overflow-hidden rounded-4xl border-primary/15 bg-surface lg:col-span-3">
-          <CardContent className="grid gap-8 p-8 md:p-10">
+          <CardContent className="grid gap-6 p-5 sm:p-8 md:gap-8 md:p-10">
             <div className="max-w-2xl">
               <Badge variant="info">{t('home.badge')}</Badge>
-              <h1 className="mt-5 font-display text-4xl font-black tracking-tight text-surface-foreground md:text-6xl">
+              <h1 className="mt-4 font-display text-3xl font-black tracking-tight text-surface-foreground sm:text-4xl md:mt-5 md:text-6xl">
                 {t('home.title')}
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base md:mt-5 md:text-lg md:leading-7">
                 {t('home.description')}
               </p>
             </div>
 
             <div>
               <Button
-                className="min-h-16 rounded-2xl px-8 text-lg shadow-lg shadow-primary/20"
+                className="min-h-14 w-full rounded-2xl px-6 text-base shadow-lg shadow-primary/20 sm:min-h-16 sm:w-auto sm:px-8 sm:text-lg"
                 disabled={!uiState.createRoomButtonState.enabled}
                 onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
                 type="button"
@@ -71,7 +71,7 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
           </CardHeader>
           <CardContent>
             <Field>
-              <InputGroup className="flex-col sm:flex-row">
+              <InputGroup className="flex-col gap-2 sm:flex-row">
                 <Input
                   aria-invalid={uiState.idOrLinkToJoinState.showError}
                   placeholder={t('home.roomInputPlaceholder')}
@@ -90,6 +90,7 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
                   }}
                 />
                 <Button
+                  className="w-full sm:w-auto"
                   disabled={!uiState.joinButtonState.enabled}
                   onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
                   type="button"
@@ -100,9 +101,7 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
               </InputGroup>
               {uiState.idOrLinkToJoinState.showError ? (
                 <FieldHint className="text-destructive">
-                  {uiState.idOrLinkToJoinState.error
-                    ? tx(uiState.idOrLinkToJoinState.error)
-                    : ''}
+                  {uiState.idOrLinkToJoinState.error ? tx(uiState.idOrLinkToJoinState.error) : ''}
                 </FieldHint>
               ) : (
                 <FieldHint>{t('home.directJoinHint')}</FieldHint>
