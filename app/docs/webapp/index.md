@@ -9,9 +9,13 @@ organized and what conventions we follow when building features.
 
 1. Read [Architecture](./architecture.md) to understand feature and capability boundaries.
 2. Read [Conventions](./conventions.md) before changing presentation, domain, or data code.
-3. Read [Design System](./design-system.md) before creating UI.
-4. Read [Internationalization](./i18n.md) before adding user-facing copy.
-5. Read [Adaptive Layouts](./adaptive-layouts.md) before touching responsive screens.
+3. Read [Local Development](./local-development.md) before running the stack.
+4. Read [Backend](./backend.md) before changing API, signaling, or SFU code.
+5. Read [Production Deploy](./production-deploy.md) and [Environment Variables](./environment.md)
+   before configuring a server.
+6. Read [Design System](./design-system.md) before creating UI.
+7. Read [Internationalization](./i18n.md) before adding user-facing copy.
+8. Read [Adaptive Layouts](./adaptive-layouts.md) before touching responsive screens.
 
 ## Project map
 
@@ -43,6 +47,10 @@ npm --prefix app run dev -w webapp
 Use these docs for project-specific decisions:
 
 - feature folder conventions;
+- local development setup;
+- backend API/SFU ownership;
+- production deploy flow;
+- environment variables;
 - product design-system rules;
 - translation ownership;
 - room/prejoin/home flow ownership;

@@ -1,87 +1,84 @@
 # Voice-First SFU Conference
 
-Greenfield workspace for a voice-first WebRTC SFU conference product.
+Рабочее пространство для voice-first WebRTC SFU конференций.
 
-The repository contains three main parts:
+## Что лежит в репозитории
 
-- `app/webapp` - React + TypeScript product client.
-- `app/kvt` - local KVT framework packages used by the client.
+- `app/webapp` - продуктовый React + TypeScript клиент.
+- `app/kvt` - локальные KVT framework packages, которые использует клиент.
 - `backend` - Go + Pion SFU, signaling, room management, REST API, Swagger/OpenAPI.
-- `deploy` - Docker Compose infrastructure with nginx gateway, backend, web, and TURN.
+- `deploy` - Docker Compose инфраструктура: nginx gateway, backend, web, TURN.
 
-## Start Here
+## Быстрый старт
 
-Install dependencies from the repository root:
+Установить зависимости:
 
 ```bash
 npm install
 npm --prefix app install
 ```
 
-Run the main checks before pushing:
+Запустить локальную разработку webapp:
 
 ```bash
-npm run lint
-npm run build
+npm run dev
 ```
 
-Run the full local stack:
+Запустить весь стек через Docker Compose:
 
 ```bash
 cd deploy
 docker compose up -d --build
 ```
 
-Open the app through the gateway:
+Открыть приложение через gateway:
 
 ```text
 http://localhost:8023
 ```
 
-The gateway is intentional: backend, web, and TURN live in the Docker network; only nginx is exposed
-for HTTP on port `8023`.
+Gateway нужен специально: backend, web и TURN живут внутри Docker-сети, наружу по HTTP смотрит
+только nginx на порту `8023`.
 
-## Root Commands
+## Основные команды из корня
 
-These commands are defined in the root `package.json`.
+| Команда                | Что делает                                          |
+| ---------------------- | --------------------------------------------------- |
+| `npm run dev`          | Запускает Vite dev server для `app/webapp`.         |
+| `npm run build`        | Собирает app workspace: KVT packages и webapp.      |
+| `npm run lint`         | Запускает ESLint для webapp и все Go-тесты backend. |
+| `npm run test`         | Alias для `npm run lint`.                           |
+| `npm run test:backend` | Запускает только Go-тесты backend.                  |
+| `npm run format`       | Форматирует репозиторий через Prettier и `gofmt`.   |
+| `npm run format:check` | Проверяет форматирование без изменений файлов.      |
+| `npm run docs:dev`     | Запускает VitePress документацию локально.          |
+| `npm run docs:build`   | Собирает документацию.                              |
+| `npm run docs:preview` | Показывает собранную документацию.                  |
 
-| Command                | Purpose                                                     |
-| ---------------------- | ----------------------------------------------------------- |
-| `npm run dev`          | Start the new `app/webapp` Vite dev server.                 |
-| `npm run build`        | Build the app workspace, including KVT packages and webapp. |
-| `npm run lint`         | Run webapp ESLint and all Go backend tests.                 |
-| `npm run test`         | Alias for `npm run lint`.                                   |
-| `npm run test:backend` | Run only backend Go tests.                                  |
-| `npm run format`       | Format the repository with Prettier and `gofmt`.            |
-| `npm run format:check` | Check formatting without writing changes.                   |
-| `npm run docs:dev`     | Start VitePress documentation locally.                      |
-| `npm run docs:build`   | Build documentation.                                        |
-| `npm run docs:preview` | Preview built documentation.                                |
+## Документация
 
-## Documentation
-
-Run docs locally:
+Запустить документацию:
 
 ```bash
 npm run docs:dev
 ```
 
-The docs are split into two tracks:
+Документация разделена на два основных раздела:
 
-- `KVT` - framework documentation for `@kvt/core`, `@kvt/react`, and `@kvt/theme`.
-- `Webapp` - onboarding documentation for product developers: architecture, conventions, design
-  system, i18n, and adaptive layouts.
+- `KVT` - документация framework packages: `@kvt/core`, `@kvt/react`, `@kvt/theme`.
+- `Webapp` - onboarding для разработчиков продукта: архитектура, конвенции, backend, deploy,
+  env-переменные, дизайн-система, i18n и adaptive layouts.
 
-Useful entry points:
+Локальные ссылки:
 
 - `http://localhost:5173/kvt/guide/`
 - `http://localhost:5173/webapp/`
 - `http://localhost:5173/ru/kvt/guide/`
 - `http://localhost:5173/ru/webapp/`
 
-## Backend Documentation
+## Backend документация
 
-When the stack is running through Docker Compose:
+Когда стек запущен через Docker Compose:
 
 ```text
 http://localhost:8023/api/swagger
@@ -89,38 +86,36 @@ http://localhost:8023/api/openapi.json
 http://localhost:8023/healthz
 ```
 
-On production:
+На production:
 
 ```text
-https://kvt.araik.dev/api/swagger
-https://kvt.araik.dev/api/openapi.json
-https://kvt.araik.dev/healthz
+https://<your-domain>/api/swagger
+https://<your-domain>/api/openapi.json
+https://<your-domain>/healthz
 ```
 
-Swagger documents the REST endpoints and WebSocket signaling message schemas.
+Swagger описывает REST endpoints и WebSocket signaling message schemas.
 
-## Project Architecture
-
-The webapp follows feature-oriented clean architecture:
+## Архитектура webapp
 
 ```text
 app/webapp/src/
   app/           bootstrap, router, DI composition
-  core/          app technical layer and product design system
+  core/          app technical layer и product design system
   capabilities/  reusable product subsystems
-  features/      user-facing flows and screens
+  features/      user-facing flows и screens
 ```
 
-KVT provides framework primitives:
+KVT даёт framework primitives:
 
-- DI container and modules.
+- DI container и modules.
 - ViewModel lifecycle.
 - Flow, StateFlow, SharedFlow.
 - React adapter hooks.
 - Route-aware lazy feature loading.
-- Theme provider and tokens.
+- Theme provider и tokens.
 
-The product app owns product-specific rules:
+Продуктовое приложение владеет:
 
 - feature boundaries;
 - room/prejoin/home flows;
@@ -128,37 +123,49 @@ The product app owns product-specific rules:
 - i18n resources;
 - RTC/media capability implementations.
 
-## Development Rules
+## Правила разработки
 
-- Use `app/webapp` only; the old root `web` client was removed.
-- Do not construct repositories or use cases inside React components.
-- Views render state and send actions to ViewModels.
-- ViewModels expose read-only `StateFlow` and emit one-off `SharedFlow` effects.
-- User-visible feedback should use the app-wide toast manager, not `console.info`.
-- UI state and effects should store typed translation keys, not arbitrary strings.
-- Use design-system tokens and components instead of hard-coded visual values.
-- Keep backend services internal to Docker; route public HTTP traffic through nginx.
+- Используем только `app/webapp`; старый root `web` клиент удалён.
+- Не создаём repositories или use cases внутри React components.
+- Views отображают state и отправляют actions во ViewModel.
+- ViewModels наружу отдают read-only `StateFlow` и one-off `SharedFlow` effects.
+- User-visible feedback показываем через app-wide toast manager, а не через `console.info`.
+- UI state и effects должны хранить typed translation keys, а не произвольные строки.
+- Стили пишем через design-system tokens/components, без hard-coded visual values.
+- Backend services держим внутри Docker-сети; публичный HTTP идёт через nginx gateway.
 
-## Deployment Notes
+## Production deploy
 
-Production currently serves the app through an external proxy to local gateway port `8023`.
-
-Server update flow:
+Общий flow на сервере:
 
 ```bash
-cd ~/plakat
+cd <project-dir>
 git pull
 cd deploy
 docker compose build web backend
 docker compose up -d --force-recreate web backend nginx
 ```
 
-Use backend rebuild only when Go code changed. For frontend-only changes, rebuilding `web` and
-recreating `nginx` is enough.
+Если менялся только frontend, обычно достаточно:
+
+```bash
+cd deploy
+docker compose build web
+docker compose up -d --force-recreate web nginx
+```
+
+Перед production запуском настрой `deploy/.env`. Не коммить реальные production secrets.
+
+Подробная инструкция есть в документации:
+
+- `Webapp -> Local Development`
+- `Webapp -> Production Deploy`
+- `Webapp -> Environment Variables`
+- `Webapp -> Backend`
 
 ## Troubleshooting
 
-If the app returns `502`, check the gateway and backend health:
+Если приложение отдаёт `502`:
 
 ```bash
 cd deploy
@@ -167,5 +174,5 @@ docker compose logs --tail=100 nginx backend web
 curl -I http://127.0.0.1:8023/healthz
 ```
 
-If WebRTC works on one network but not another, check TURN and ICE-related environment variables in
-`deploy/.env`, then inspect backend and exported client logs.
+Если WebRTC работает в одной сети, но ломается в другой, проверь TURN и ICE-переменные в
+`deploy/.env`, затем смотри backend logs и exported client logs.

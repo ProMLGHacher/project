@@ -130,7 +130,16 @@ function createEnglishWebappSidebar() {
       items: [
         { text: 'Start Here', link: '/webapp/' },
         { text: 'Architecture', link: '/webapp/architecture' },
-        { text: 'Conventions', link: '/webapp/conventions' }
+        { text: 'Conventions', link: '/webapp/conventions' },
+        { text: 'Local Development', link: '/webapp/local-development' }
+      ]
+    },
+    {
+      text: 'Backend and Deploy',
+      items: [
+        { text: 'Backend', link: '/webapp/backend' },
+        { text: 'Production Deploy', link: '/webapp/production-deploy' },
+        { text: 'Environment Variables', link: '/webapp/environment' }
       ]
     },
     {
@@ -183,7 +192,16 @@ function createRussianWebappSidebar() {
       items: [
         { text: 'С чего начать', link: '/ru/webapp/' },
         { text: 'Архитектура', link: '/ru/webapp/architecture' },
-        { text: 'Конвенции', link: '/ru/webapp/conventions' }
+        { text: 'Конвенции', link: '/ru/webapp/conventions' },
+        { text: 'Локальная разработка', link: '/ru/webapp/local-development' }
+      ]
+    },
+    {
+      text: 'Backend и Deploy',
+      items: [
+        { text: 'Backend', link: '/ru/webapp/backend' },
+        { text: 'Production deploy', link: '/ru/webapp/production-deploy' },
+        { text: 'Environment variables', link: '/ru/webapp/environment' }
       ]
     },
     {
