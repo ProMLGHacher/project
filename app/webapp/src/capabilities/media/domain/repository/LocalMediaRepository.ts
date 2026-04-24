@@ -1,5 +1,5 @@
 import type { PromiseResult, StateFlow } from '@kvt/core'
-import type { LocalMediaState, MediaError } from '../model'
+import type { LocalMediaState, MediaError, StartLocalPreviewParams } from '../model'
 
 export interface LocalMediaRepository {
   readonly state: StateFlow<LocalMediaState>
@@ -9,11 +9,4 @@ export interface LocalMediaRepository {
   setCameraEnabled(enabled: boolean): PromiseResult<void, MediaError>
   setScreenShareEnabled(enabled: boolean): PromiseResult<void, MediaError>
   setNoiseSuppressionEnabled(enabled: boolean): void
-}
-
-export type StartLocalPreviewParams = {
-  readonly micEnabled: boolean
-  readonly cameraEnabled: boolean
-  readonly microphoneDeviceId?: string | null
-  readonly cameraDeviceId?: string | null
 }

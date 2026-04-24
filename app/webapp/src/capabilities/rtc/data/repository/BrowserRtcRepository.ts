@@ -40,7 +40,8 @@ export class BrowserRtcRepository implements RtcRepository {
     this.client = new ConferenceClient({
       onSnapshot: (snapshot) => this.applySnapshot(params.participantId, snapshot),
       onSlotUpdated: (slot) => this.applySlotUpdate(slot),
-      onRemoteTrack: (participantId, _kind, stream) => this.applyRemoteStream(participantId, stream),
+      onRemoteTrack: (participantId, _kind, stream) =>
+        this.applyRemoteStream(participantId, stream),
       onRemoteStreamsReset: () => this.clearRemoteStreams(),
       onLocalStream: (stream) => this.applyLocalStream(stream),
       onStateChange: (state) => this.updateStatus(state),
@@ -64,7 +65,7 @@ export class BrowserRtcRepository implements RtcRepository {
         micEnabled: params.micEnabled,
         cameraEnabled: params.cameraEnabled
       })
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'unknown-error', message: readableError(error) })
     }
@@ -84,7 +85,7 @@ export class BrowserRtcRepository implements RtcRepository {
   async setMicrophoneEnabled(enabled: boolean): PromiseResult<void, RtcError> {
     try {
       await this.client?.setMicEnabled(enabled)
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'media-publish-failed', message: readableError(error) })
     }
@@ -93,7 +94,7 @@ export class BrowserRtcRepository implements RtcRepository {
   async setCameraEnabled(enabled: boolean): PromiseResult<void, RtcError> {
     try {
       await this.client?.setCameraEnabled(enabled)
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'media-publish-failed', message: readableError(error) })
     }
@@ -102,18 +103,18 @@ export class BrowserRtcRepository implements RtcRepository {
   async setScreenShareEnabled(enabled: boolean): PromiseResult<void, RtcError> {
     try {
       await this.client?.setScreenEnabled(enabled)
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'media-publish-failed', message: readableError(error) })
     }
   }
 
   async restartIce(): PromiseResult<void, RtcError> {
-    return ok(undefined)
+    return ok()
   }
 
   async forceRelayTransport(): PromiseResult<void, RtcError> {
-    return ok(undefined)
+    return ok()
   }
 
   private applySnapshot(participantId: string, snapshot: RoomSnapshot) {

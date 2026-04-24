@@ -18,7 +18,7 @@ export class BrowserSignalingRepository implements SignalingRepository {
           payload: message.payload
         })
       })
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'signaling-failed', message: readableError(error) })
     }
@@ -27,7 +27,7 @@ export class BrowserSignalingRepository implements SignalingRepository {
   async send(message: SignalingMessage): PromiseResult<void, RtcError> {
     try {
       this.client.send(message)
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({ type: 'signaling-failed', message: readableError(error) })
     }

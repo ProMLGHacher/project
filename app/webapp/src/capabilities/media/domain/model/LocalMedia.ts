@@ -25,6 +25,13 @@ export type LocalMediaState = {
   readonly noiseSuppressionEnabled: boolean
 }
 
+export type StartLocalPreviewParams = {
+  readonly micEnabled: boolean
+  readonly cameraEnabled: boolean
+  readonly microphoneDeviceId?: string | null
+  readonly cameraDeviceId?: string | null
+}
+
 export type MediaError =
   | { readonly type: 'permission-denied' }
   | { readonly type: 'device-not-found' }

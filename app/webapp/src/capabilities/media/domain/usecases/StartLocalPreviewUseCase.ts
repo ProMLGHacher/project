@@ -1,9 +1,6 @@
 import type { PromiseResult, UseCase } from '@kvt/core'
-import type { MediaError } from '../model'
-import type {
-  LocalMediaRepository,
-  StartLocalPreviewParams
-} from '../repository/LocalMediaRepository'
+import type { MediaError, StartLocalPreviewParams } from '../model'
+import type { LocalMediaRepository } from '../repository/LocalMediaRepository'
 
 export class StartLocalPreviewUseCase implements UseCase<
   StartLocalPreviewParams,

@@ -17,14 +17,12 @@ export class BrowserMediaDeviceRepository implements MediaDeviceRepository {
 
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
-      const mapped = devices
-        .filter((device) => ['audioinput', 'videoinput', 'audiooutput'].includes(device.kind))
-        .map<MediaDevice>((device) => ({
-          id: device.deviceId,
-          label: device.label || fallbackLabel(device.kind),
-          kind: mapDeviceKind(device.kind),
-          groupId: device.groupId || undefined
-        }))
+      const mapped = devices.map<MediaDevice>((device) => ({
+        id: device.deviceId,
+        label: device.label || fallbackLabel(device.kind),
+        kind: mapDeviceKind(device.kind),
+        groupId: device.groupId || undefined
+      }))
 
       return ok(mapped.length ? mapped : fallbackDevices)
     } catch (error) {
@@ -52,7 +50,7 @@ export class BrowserMediaDeviceRepository implements MediaDeviceRepository {
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       stream.getTracks().forEach((track) => track.stop())
       this.permission.set('granted')
-      return ok(undefined)
+      return ok()
     } catch (error) {
       this.permission.set('denied')
       return err(toMediaError(error))

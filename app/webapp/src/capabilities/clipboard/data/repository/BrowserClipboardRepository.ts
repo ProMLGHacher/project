@@ -13,7 +13,7 @@ export class BrowserClipboardRepository implements ClipboardRepository {
 
     try {
       await navigator.clipboard.writeText(params.text)
-      return ok(undefined)
+      return ok()
     } catch (error) {
       return err({
         type: 'unknown-error',

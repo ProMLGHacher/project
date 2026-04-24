@@ -14,7 +14,7 @@ export class LocalStorageJoinSessionRepository implements JoinSessionRepository 
       keyFor(session.roomId),
       JSON.stringify({ ...session, storedAt: new Date().toISOString() })
     )
-    return ok(undefined)
+    return ok()
   }
 
   async load(roomId: string): PromiseResult<StoredJoinSession, SessionError> {
@@ -24,7 +24,7 @@ export class LocalStorageJoinSessionRepository implements JoinSessionRepository 
     }
 
     try {
-      return ok(JSON.parse(stored) as StoredJoinSession)
+      return ok<StoredJoinSession>(JSON.parse(stored))
     } catch {
       return err({ type: 'unknown-error', message: 'Stored session is invalid' })
     }
@@ -32,7 +32,7 @@ export class LocalStorageJoinSessionRepository implements JoinSessionRepository 
 
   async clear(roomId: string): PromiseResult<void, SessionError> {
     localStorage.removeItem(keyFor(roomId))
-    return ok(undefined)
+    return ok()
   }
 }
 

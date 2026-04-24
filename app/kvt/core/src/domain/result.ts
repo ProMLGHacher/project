@@ -12,8 +12,14 @@ export interface Err<E> {
 
 export type PromiseResult<T, E = Error> = Promise<Result<T, E>>
 
-export function ok<T>(value: T): Ok<T> {
-  return { ok: true, value }
+export function ok(): Ok<void>
+export function ok<T>(value: T): Ok<T>
+export function ok<T>(value?: T): Ok<T> | Ok<void> {
+  if (arguments.length === 0) {
+    return { ok: true, value: undefined }
+  } else {
+    return { ok: true, value: value as T }
+  }
 }
 
 export function err<E>(error: E): Err<E> {
