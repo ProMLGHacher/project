@@ -471,9 +471,18 @@ class VoiceModule {
     @Inject(LoadPrejoinContextUseCase) loadContext: LoadPrejoinContextUseCase,
     @Inject(StartPrejoinPreviewUseCase) startPreview: StartPrejoinPreviewUseCase,
     @Inject(ObserveLocalMediaUseCase) observeMedia: ObserveLocalMediaUseCase,
+    @Inject(SetMicrophoneEnabledUseCase) setMicrophoneEnabled: SetMicrophoneEnabledUseCase,
+    @Inject(SetCameraEnabledUseCase) setCameraEnabled: SetCameraEnabledUseCase,
     @Inject(PrejoinJoinRoomFlowUseCase) joinRoom: PrejoinJoinRoomFlowUseCase
   ) {
-    return new PrejoinViewModel(loadContext, startPreview, observeMedia, joinRoom)
+    return new PrejoinViewModel(
+      loadContext,
+      startPreview,
+      observeMedia,
+      setMicrophoneEnabled,
+      setCameraEnabled,
+      joinRoom
+    )
   }
 
   @Provides(RoomViewModel)

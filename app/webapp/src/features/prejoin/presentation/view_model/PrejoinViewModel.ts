@@ -10,6 +10,8 @@ import type { JoinRoomFlowUseCase } from '@features/prejoin/domain/usecases/Join
 import type { LoadPrejoinContextUseCase } from '@features/prejoin/domain/usecases/LoadPrejoinContextUseCase'
 import type { StartPrejoinPreviewUseCase } from '@features/prejoin/domain/usecases/StartPrejoinPreviewUseCase'
 import type { ObserveLocalMediaUseCase } from '@capabilities/media/domain/usecases/ObserveLocalMediaUseCase'
+import type { SetMicrophoneEnabledUseCase } from '@capabilities/media/domain/usecases/SetMicrophoneEnabledUseCase'
+import type { SetCameraEnabledUseCase } from '@capabilities/media/domain/usecases/SetCameraEnabledUseCase'
 
 export class PrejoinViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<PrejoinUiState>(initialPrejoinState)
@@ -22,6 +24,8 @@ export class PrejoinViewModel extends ViewModel {
     private readonly loadPrejoinContextUseCase: LoadPrejoinContextUseCase,
     private readonly startPrejoinPreviewUseCase: StartPrejoinPreviewUseCase,
     private readonly observeLocalMediaUseCase: ObserveLocalMediaUseCase,
+    private readonly setMicrophoneEnabledUseCase: SetMicrophoneEnabledUseCase,
+    private readonly setCameraEnabledUseCase: SetCameraEnabledUseCase,
     private readonly joinRoomFlowUseCase: JoinRoomFlowUseCase
   ) {
     super()
@@ -132,7 +136,18 @@ export class PrejoinViewModel extends ViewModel {
       micEnabled: enabled,
       preview: state.preview ? { ...state.preview, micEnabled: enabled } : state.preview
     }))
-    await this.startPreview()
+
+    const result = await this.setMicrophoneEnabledUseCase.execute(enabled)
+    if (!result.ok) {
+      const message = mediaErrorMessage(result.error.type)
+      this.state.update((state) => ({
+        ...state,
+        error: message,
+        micEnabled: !enabled,
+        preview: state.preview ? { ...state.preview, micEnabled: !enabled } : state.preview
+      }))
+      this.effects.emit({ type: 'preview-failed', message })
+    }
   }
 
   private async updateCamera(enabled: boolean) {
@@ -148,7 +163,25 @@ export class PrejoinViewModel extends ViewModel {
           }
         : state.preview
     }))
-    await this.startPreview()
+
+    const result = await this.setCameraEnabledUseCase.execute(enabled)
+    if (!result.ok) {
+      const message = mediaErrorMessage(result.error.type)
+      this.state.update((state) => ({
+        ...state,
+        error: message,
+        cameraEnabled: !enabled,
+        preview: state.preview
+          ? {
+              ...state.preview,
+              cameraEnabled: !enabled,
+              previewAvailable: !enabled ? state.preview.previewAvailable : false,
+              status: !enabled ? state.preview.status : 'idle'
+            }
+          : state.preview
+      }))
+      this.effects.emit({ type: 'preview-failed', message })
+    }
   }
 
   private async join() {

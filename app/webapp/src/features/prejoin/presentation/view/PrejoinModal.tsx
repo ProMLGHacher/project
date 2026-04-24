@@ -22,6 +22,7 @@ import {
 } from '@core/design-system'
 import type { ParticipantRole } from '@features/room/domain/model/Participant'
 import { PrejoinViewModel } from '../view_model/PrejoinViewModel'
+import { useAttachMediaStream } from '@core/react/useAttachMediaStream'
 
 export interface PrejoinModalProps {
   readonly open: boolean
@@ -62,11 +63,7 @@ export function PrejoinModal({
     }
   })
 
-  useEffect(() => {
-    if (previewRef.current) {
-      previewRef.current.srcObject = uiState.preview?.stream ?? null
-    }
-  }, [uiState.preview?.stream])
+  useAttachMediaStream(previewRef, uiState.preview?.stream ?? null)
 
   return (
     <Dialog
