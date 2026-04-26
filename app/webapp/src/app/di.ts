@@ -9,6 +9,9 @@ import {
 import { BrowserClipboardRepository } from '@capabilities/clipboard/data/repository/BrowserClipboardRepository'
 import { clipboardRepositoryToken } from '@capabilities/clipboard/domain/repository/tokens'
 import { CopyTextUseCase } from '@capabilities/clipboard/domain/usecases/CopyTextUseCase'
+import { BrowserConferenceAudioRepository } from '@capabilities/conference-audio/data/repository/BrowserConferenceAudioRepository'
+import { conferenceAudioRepositoryToken } from '@capabilities/conference-audio/domain/repository/tokens'
+import { PlayConferenceSoundUseCase } from '@capabilities/conference-audio/domain/usecases/PlayConferenceSoundUseCase'
 import { LocalStorageClientLogRepository } from '@capabilities/client-logs/data/repository/LocalStorageClientLogRepository'
 import { clientLogRepositoryToken } from '@capabilities/client-logs/domain/repository/tokens'
 import { AppendClientLogUseCase } from '@capabilities/client-logs/domain/usecases/AppendClientLogUseCase'
@@ -75,6 +78,7 @@ import { ToggleRoomScreenShareUseCase } from '@features/room/domain/usecases/Tog
 import { RoomViewModel } from '@features/room/presentation/view_model/RoomViewModel'
 import type { ClipboardRepository } from '@capabilities/clipboard/domain/repository/ClipboardRepository'
 import type { ClientLogRepository } from '@capabilities/client-logs/domain/repository/ClientLogRepository'
+import type { ConferenceAudioRepository } from '@capabilities/conference-audio/domain/repository/ConferenceAudioRepository'
 import type { LocalMediaRepository } from '@capabilities/media/domain/repository/LocalMediaRepository'
 import type { MediaDeviceRepository } from '@capabilities/media/domain/repository/MediaDeviceRepository'
 import type { RtcRepository } from '@capabilities/rtc/domain/repository/RtcRepository'
@@ -141,6 +145,12 @@ class VoiceModule {
   @Singleton({ lazy: true })
   static provideClientLogRepository(): ClientLogRepository {
     return new LocalStorageClientLogRepository()
+  }
+
+  @Provides(conferenceAudioRepositoryToken)
+  @Singleton({ lazy: true })
+  static provideConferenceAudioRepository(): ConferenceAudioRepository {
+    return new BrowserConferenceAudioRepository()
   }
 
   @Provides(CreateRoomUseCase)
@@ -422,6 +432,13 @@ class VoiceModule {
     return new CopyTextUseCase(repository)
   }
 
+  @Provides(PlayConferenceSoundUseCase)
+  static providePlayConferenceSoundUseCase(
+    @Inject(conferenceAudioRepositoryToken) repository: ConferenceAudioRepository
+  ) {
+    return new PlayConferenceSoundUseCase(repository)
+  }
+
   @Provides(BuildRoomLinkUseCase)
   static provideBuildRoomLinkUseCase() {
     return new BuildRoomLinkUseCase()
@@ -500,7 +517,8 @@ class VoiceModule {
     @Inject(ExportClientLogsUseCase) exportLogs: ExportClientLogsUseCase,
     @Inject(ClearClientLogsUseCase) clearLogs: ClearClientLogsUseCase,
     @Inject(ClearJoinSessionUseCase) clearSession: ClearJoinSessionUseCase,
-    @Inject(LeaveRoomUseCase) leaveRoom: LeaveRoomUseCase
+    @Inject(LeaveRoomUseCase) leaveRoom: LeaveRoomUseCase,
+    @Inject(PlayConferenceSoundUseCase) playConferenceSound: PlayConferenceSoundUseCase
   ) {
     return new RoomViewModel(
       loadSession,
@@ -515,7 +533,8 @@ class VoiceModule {
       exportLogs,
       clearLogs,
       clearSession,
-      leaveRoom
+      leaveRoom,
+      playConferenceSound
     )
   }
 }

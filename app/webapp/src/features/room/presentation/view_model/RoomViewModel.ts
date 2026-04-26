@@ -1,5 +1,7 @@
 import { CompositeDisposable, MutableSharedFlow, MutableStateFlow, ViewModel } from '@kvt/core'
 import type { Participant } from '@features/room/domain/model/Participant'
+import type { ConferenceSound } from '@capabilities/conference-audio/domain/model/ConferenceSound'
+import type { PlayConferenceSoundUseCase } from '@capabilities/conference-audio/domain/usecases/PlayConferenceSoundUseCase'
 import type { RtcDiagnostics, RtcSession } from '@capabilities/rtc/domain/model'
 import type { ConnectToRoomRtcUseCase } from '@capabilities/rtc/domain/usecases/ConnectToRoomRtcUseCase'
 import type { LoadJoinSessionUseCase } from '@capabilities/session/domain/usecases/LoadJoinSessionUseCase'
@@ -47,6 +49,7 @@ export class RoomViewModel extends ViewModel {
   private readonly effects = new MutableSharedFlow<RoomUiEffect>()
 
   private latestDiagnostics: RtcDiagnostics | null = null
+  private lastConferenceSoundParticipants: readonly Participant[] | null = null
 
   // Нужны, чтобы старые async-ответы не перезаписывали новое состояние.
   private openRoomRequestId = 0
@@ -72,7 +75,8 @@ export class RoomViewModel extends ViewModel {
     private readonly exportClientLogsUseCase: ExportClientLogsUseCase,
     private readonly clearClientLogsUseCase: ClearClientLogsUseCase,
     private readonly clearJoinSessionUseCase: ClearJoinSessionUseCase,
-    private readonly leaveRoomUseCase: LeaveRoomUseCase
+    private readonly leaveRoomUseCase: LeaveRoomUseCase,
+    private readonly playConferenceSoundUseCase: PlayConferenceSoundUseCase
   ) {
     super()
   }
@@ -82,7 +86,11 @@ export class RoomViewModel extends ViewModel {
 
     disposables.add(
       this.observeRoomSessionUseCase.execute().subscribe((session) => {
-        this.updateState((state) => this.applyObservedSession(state, session))
+        this.updateState((state) => {
+          const nextState = this.applyObservedSession(state, session)
+          this.playObservedConferenceSounds(nextState)
+          return nextState
+        })
       })
     )
 
@@ -158,6 +166,7 @@ export class RoomViewModel extends ViewModel {
     this.connectRoomRequestId++
     this.invalidateControlRequests()
     this.latestDiagnostics = null
+    this.lastConferenceSoundParticipants = null
 
     this.updateState((state) => this.createOpeningRoomState(state, normalizedRoomId))
 
@@ -312,6 +321,8 @@ export class RoomViewModel extends ViewModel {
         actionStatus: enabled ? options.enabledStatus : options.disabledStatus
       }
     })
+
+    this.playLocalControlSound(options.control, enabled)
   }
 
   private async copyRoomLink() {
@@ -449,6 +460,7 @@ export class RoomViewModel extends ViewModel {
     this.connectRoomRequestId++
     this.invalidateControlRequests()
     this.latestDiagnostics = null
+    this.lastConferenceSoundParticipants = null
 
     this.leaveRoomUseCase.execute()
     await this.clearJoinSessionUseCase.execute(roomId)
@@ -476,6 +488,96 @@ export class RoomViewModel extends ViewModel {
 
     // Если RTC-сессия прислала новый snapshot, UI-контролы лучше синхронизировать с ним.
     return this.withDiagnostics(this.syncControlsWithLocalParticipant(nextState), session)
+  }
+
+  private playLocalControlSound(control: RoomControlKey, enabled: boolean) {
+    switch (control) {
+      case 'microphone':
+        this.playConferenceSoundUseCase.execute(enabled ? 'microphone-on' : 'microphone-off')
+        break
+      case 'camera':
+        this.playConferenceSoundUseCase.execute(enabled ? 'camera-on' : 'camera-off')
+        break
+      case 'screenShare':
+        if (enabled) {
+          this.playConferenceSoundUseCase.execute('screen-share-outgoing')
+        }
+        break
+    }
+  }
+
+  private playObservedConferenceSounds(nextState: RoomUiState) {
+    if (!nextState.localParticipantId || nextState.prejoinOpen) {
+      this.lastConferenceSoundParticipants = null
+      return
+    }
+
+    const previousParticipants = this.lastConferenceSoundParticipants
+    this.lastConferenceSoundParticipants = nextState.participants
+
+    if (!previousParticipants) {
+      return
+    }
+
+    const previousById = participantsById(previousParticipants)
+    const nextById = participantsById(nextState.participants)
+    const localParticipantId = nextState.localParticipantId
+
+    for (const participant of nextState.participants) {
+      if (participant.id === localParticipantId) {
+        continue
+      }
+
+      const previousParticipant = previousById.get(participant.id)
+
+      if (!previousParticipant) {
+        this.playConferenceSoundUseCase.execute('participant-incoming')
+        continue
+      }
+
+      this.playRemoteSlotSounds(previousParticipant, participant)
+    }
+
+    for (const participant of previousParticipants) {
+      if (participant.id !== localParticipantId && !nextById.has(participant.id)) {
+        this.playConferenceSoundUseCase.execute('participant-outgoing')
+      }
+    }
+  }
+
+  private playRemoteSlotSounds(previousParticipant: Participant, nextParticipant: Participant) {
+    this.playRemoteToggleSound(
+      participantHasEnabledSlot(previousParticipant, 'audio'),
+      participantHasEnabledSlot(nextParticipant, 'audio'),
+      'microphone-on',
+      'microphone-off'
+    )
+    this.playRemoteToggleSound(
+      participantHasEnabledSlot(previousParticipant, 'camera'),
+      participantHasEnabledSlot(nextParticipant, 'camera'),
+      'camera-on',
+      'camera-off'
+    )
+
+    const wasScreenSharing = participantHasEnabledSlot(previousParticipant, 'screen')
+    const isScreenSharing = participantHasEnabledSlot(nextParticipant, 'screen')
+
+    if (!wasScreenSharing && isScreenSharing) {
+      this.playConferenceSoundUseCase.execute('screen-share-incoming')
+    }
+  }
+
+  private playRemoteToggleSound(
+    wasEnabled: boolean,
+    isEnabled: boolean,
+    enabledSound: ConferenceSound,
+    disabledSound: ConferenceSound
+  ) {
+    if (wasEnabled === isEnabled) {
+      return
+    }
+
+    this.playConferenceSoundUseCase.execute(isEnabled ? enabledSound : disabledSound)
   }
 
   private createOpeningRoomState(state: RoomUiState, roomId: string): RoomUiState {
@@ -752,4 +854,8 @@ function hasEnabledSlot(
 
 function participantHasEnabledSlot(participant: Participant, kind: ParticipantSlotKind): boolean {
   return participant.slots.some((slot) => slot.kind === kind && slot.enabled)
+}
+
+function participantsById(participants: readonly Participant[]): Map<string, Participant> {
+  return new Map(participants.map((participant) => [participant.id, participant]))
 }
