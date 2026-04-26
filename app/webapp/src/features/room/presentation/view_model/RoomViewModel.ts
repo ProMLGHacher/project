@@ -22,10 +22,39 @@ import {
   type RoomUiState
 } from '../model/RoomState'
 
+type RoomControlKey = 'microphone' | 'camera' | 'screenShare'
+type RoomControl = RoomUiState[RoomControlKey]
+type RoomToastMessageKey = Extract<RoomUiEffect, { readonly type: 'show-toast' }>['message']
+type ParticipantSlotKind = Participant['slots'][number]['kind']
+
+type ToggleRoomControlOptions = {
+  readonly control: RoomControlKey
+  readonly slotKind: ParticipantSlotKind
+  readonly failedToast: RoomToastMessageKey
+  readonly enabledStatus: RoomUiState['actionStatus']
+  readonly disabledStatus: RoomUiState['actionStatus']
+  readonly getPublishing: (enabled: boolean) => boolean
+  readonly execute: (enabled: boolean) => Promise<{ readonly ok: boolean }>
+}
+
+type RoomOpenErrorConfig = {
+  readonly actionStatus: RoomUiState['actionStatus']
+  readonly error: NonNullable<RoomUiState['error']>
+}
+
 export class RoomViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<RoomUiState>(initialRoomState)
   private readonly effects = new MutableSharedFlow<RoomUiEffect>()
+
   private latestDiagnostics: RtcDiagnostics | null = null
+
+  // Нужны, чтобы старые async-ответы не перезаписывали новое состояние.
+  private openRoomRequestId = 0
+  private enterRoomRequestId = 0
+  private connectRoomRequestId = 0
+  private microphoneRequestId = 0
+  private cameraRequestId = 0
+  private screenShareRequestId = 0
 
   readonly uiState = this.state.asStateFlow()
   readonly uiEffect = this.effects.asSharedFlow()
@@ -50,34 +79,21 @@ export class RoomViewModel extends ViewModel {
 
   protected override onInit() {
     const disposables = new CompositeDisposable()
+
     disposables.add(
       this.observeRoomSessionUseCase.execute().subscribe((session) => {
-        this.state.update((state) => {
-          const next = {
-            ...state,
-            status: session.status,
-            roomId: session.roomId || state.roomId,
-            localParticipantId: session.participantId || state.localParticipantId,
-            participants: (session.snapshot?.participants ?? state.participants) as Participant[],
-            localStream: session.localStream,
-            remoteStreams: session.remoteStreams
-          }
-          return {
-            ...next,
-            diagnostics: createDiagnostics(next, session, this.latestDiagnostics)
-          }
-        })
+        this.updateState((state) => this.applyObservedSession(state, session))
       })
     )
+
     disposables.add(
       this.observeRoomDiagnosticsUseCase.execute().subscribe((diagnostics) => {
         this.latestDiagnostics = diagnostics
-        this.state.update((state) => ({
-          ...state,
-          diagnostics: createDiagnostics(state, null, diagnostics)
-        }))
+
+        this.updateState((state) => this.withDiagnostics(state, null))
       })
     )
+
     return disposables
   }
 
@@ -108,15 +124,13 @@ export class RoomViewModel extends ViewModel {
         this.exportLogs()
         break
       case 'clear-logs-pressed':
-        this.effects.emit({ type: 'show-toast', message: 'room.toasts.logsCleared' })
-        this.clearClientLogsUseCase.execute()
-        this.state.update((state) => ({ ...state, actionStatus: 'room.status.logsCleared' }))
+        this.clearLogs()
         break
       case 'leave-pressed':
         void this.leaveRoom()
         break
       case 'technical-info-toggled':
-        this.state.update((state) => ({ ...state, technicalInfoVisible: event.visible }))
+        this.updateState((state) => ({ ...state, technicalInfoVisible: event.visible }))
         break
       default:
         throw new Error(`Unknown event: ${JSON.stringify(event)}`)
@@ -124,63 +138,64 @@ export class RoomViewModel extends ViewModel {
   }
 
   private async openRoom(roomId: string) {
-    if (!roomId.trim()) {
+    const normalizedRoomId = roomId.trim()
+
+    if (!normalizedRoomId) {
       this.effects.emit({ type: 'navigate-home' })
       return
     }
 
-    if (this.state.value.roomId === roomId) {
+    const current = this.state.value
+
+    if (current.roomId === normalizedRoomId && current.status !== 'failed' && !current.error) {
       return
     }
 
-    this.state.update((state) => ({
-      ...state,
-      roomId,
-      prejoinOpen: false,
-      status: 'connecting',
-      participants: [],
-      localParticipantId: null,
-      localStream: null,
-      remoteStreams: {},
-      error: null,
-      actionStatus: 'room.status.checkingRoom',
-      diagnostics: null
-    }))
+    const requestId = ++this.openRoomRequestId
 
-    const room = await this.getRoomMetadataUseCase.execute({ roomId })
+    // Смена комнаты делает неактуальными старые подключения и pending-toggle операции.
+    this.enterRoomRequestId++
+    this.connectRoomRequestId++
+    this.invalidateControlRequests()
+    this.latestDiagnostics = null
+
+    this.updateState((state) => this.createOpeningRoomState(state, normalizedRoomId))
+
+    const room = await this.getRoomMetadataUseCase.execute({ roomId: normalizedRoomId })
+
+    if (!this.isActualOpenRoomRequest(requestId)) {
+      return
+    }
+
     if (!room.ok) {
-      await this.clearJoinSessionUseCase.execute(roomId)
-      this.state.update((state) => ({
+      await this.clearJoinSessionUseCase.execute(normalizedRoomId)
+
+      if (!this.isActualOpenRoomRequest(requestId)) {
+        return
+      }
+
+      this.updateState((state) => ({
         ...state,
         status: 'failed',
         prejoinOpen: false,
-        actionStatus:
-          room.error.type === 'room-not-found'
-            ? 'room.status.roomUnavailable'
-            : 'room.status.roomCheckFailed',
-        error:
-          room.error.type === 'room-not-found'
-            ? {
-                title: 'room.errors.roomUnavailable.title',
-                description: 'room.errors.roomUnavailable.description',
-                actionLabel: 'room.errors.roomUnavailable.action'
-              }
-            : {
-                title: 'room.errors.roomCheckFailed.title',
-                description: 'room.errors.roomCheckFailed.description',
-                actionLabel: 'room.errors.roomCheckFailed.action'
-              }
+        ...roomOpenError(room.error.type)
       }))
+
       return
     }
 
-    const storedSession = await this.loadJoinSessionUseCase.execute(roomId)
+    const storedSession = await this.loadJoinSessionUseCase.execute(normalizedRoomId)
+
+    if (!this.isActualOpenRoomRequest(requestId)) {
+      return
+    }
+
     if (storedSession.ok) {
-      await this.connectStoredSession(storedSession.value)
+      await this.connectStoredSession(storedSession.value, requestId)
       return
     }
 
-    this.state.update((state) => ({
+    this.updateState((state) => ({
       ...state,
       status: 'idle',
       prejoinOpen: true,
@@ -189,80 +204,130 @@ export class RoomViewModel extends ViewModel {
   }
 
   private async enterRoom() {
-    const storedSession = await this.loadJoinSessionUseCase.execute(this.state.value.roomId)
+    const requestId = ++this.enterRoomRequestId
+    const roomId = this.state.value.roomId
+
+    const storedSession = await this.loadJoinSessionUseCase.execute(roomId)
+
+    if (!this.isActualEnterRoomRequest(requestId) || this.state.value.roomId !== roomId) {
+      return
+    }
+
     if (!storedSession.ok) {
       this.effects.emit({ type: 'show-toast', message: 'room.toasts.sessionMissing' })
       return
     }
 
-    this.state.update((state) => ({ ...state, prejoinOpen: false }))
     await this.connectStoredSession(storedSession.value)
   }
 
   private async toggleMicrophone() {
-    const enabled = !this.state.value.microphone.enabled
-    const result = await this.toggleRoomMicrophoneUseCase.execute(enabled)
-    if (!result.ok) {
-      this.effects.emit({ type: 'show-toast', message: 'room.toasts.microphoneFailed' })
-      return
-    }
-
-    this.state.update((state) => {
-      return {
-        ...state,
-        microphone: { ...state.microphone, enabled },
-        participants: updateLocalSlot(state, 'audio', enabled, true),
-        actionStatus: enabled ? 'room.status.microphoneOn' : 'room.status.microphoneMuted'
-      }
+    await this.toggleRoomControl({
+      control: 'microphone',
+      slotKind: 'audio',
+      failedToast: 'room.toasts.microphoneFailed',
+      enabledStatus: 'room.status.microphoneOn',
+      disabledStatus: 'room.status.microphoneMuted',
+      getPublishing: () => true,
+      execute: (enabled) => this.toggleRoomMicrophoneUseCase.execute(enabled)
     })
   }
 
   private async toggleCamera() {
-    const enabled = !this.state.value.camera.enabled
-    const result = await this.toggleRoomCameraUseCase.execute(enabled)
-    if (!result.ok) {
-      this.effects.emit({ type: 'show-toast', message: 'room.toasts.cameraFailed' })
-      return
-    }
-
-    this.state.update((state) => {
-      return {
-        ...state,
-        camera: { ...state.camera, enabled },
-        participants: updateLocalSlot(state, 'camera', enabled, enabled),
-        actionStatus: enabled ? 'room.status.cameraOn' : 'room.status.cameraOff'
-      }
+    await this.toggleRoomControl({
+      control: 'camera',
+      slotKind: 'camera',
+      failedToast: 'room.toasts.cameraFailed',
+      enabledStatus: 'room.status.cameraOn',
+      disabledStatus: 'room.status.cameraOff',
+      getPublishing: (enabled) => enabled,
+      execute: (enabled) => this.toggleRoomCameraUseCase.execute(enabled)
     })
   }
 
   private async toggleScreenShare() {
-    const enabled = !this.state.value.screenShare.enabled
-    const result = await this.toggleRoomScreenShareUseCase.execute(enabled)
-    if (!result.ok) {
-      this.effects.emit({ type: 'show-toast', message: 'room.toasts.screenFailed' })
+    await this.toggleRoomControl({
+      control: 'screenShare',
+      slotKind: 'screen',
+      failedToast: 'room.toasts.screenFailed',
+      enabledStatus: 'room.status.screenStarted',
+      disabledStatus: 'room.status.screenStopped',
+      getPublishing: (enabled) => enabled,
+      execute: (enabled) => this.toggleRoomScreenShareUseCase.execute(enabled)
+    })
+  }
+
+  private async toggleRoomControl(options: ToggleRoomControlOptions) {
+    const currentControl = this.getControl(this.state.value, options.control)
+
+    if (currentControl.loading) {
       return
     }
 
-    this.state.update((state) => {
+    const enabled = !currentControl.enabled
+    const requestId = this.nextControlRequestId(options.control)
+
+    this.updateState((state) =>
+      this.updateControl(state, options.control, (control) => ({
+        ...control,
+        loading: true,
+        error: null
+      }))
+    )
+
+    const result = await options.execute(enabled)
+
+    if (!this.isActualControlRequest(options.control, requestId)) {
+      return
+    }
+
+    if (!result.ok) {
+      this.updateState((state) =>
+        this.updateControl(state, options.control, (control) => ({
+          ...control,
+          loading: false
+        }))
+      )
+
+      this.effects.emit({ type: 'show-toast', message: options.failedToast })
+      return
+    }
+
+    this.updateState((state) => {
+      const nextState = this.updateControl(state, options.control, (control) => ({
+        ...control,
+        enabled,
+        loading: false,
+        error: null
+      }))
+
       return {
-        ...state,
-        screenShare: { ...state.screenShare, enabled },
-        participants: updateLocalSlot(state, 'screen', enabled, enabled),
-        actionStatus: enabled ? 'room.status.screenStarted' : 'room.status.screenStopped'
+        ...nextState,
+        participants: updateLocalSlot(
+          nextState,
+          options.slotKind,
+          enabled,
+          options.getPublishing(enabled)
+        ),
+        actionStatus: enabled ? options.enabledStatus : options.disabledStatus
       }
     })
   }
 
   private async copyRoomLink() {
+    const roomId = this.state.value.roomId
+
     const result = await this.copyRoomLinkUseCase.execute({
-      roomId: this.state.value.roomId,
+      roomId,
       origin: window.location.origin
     })
+
     this.effects.emit({
       type: 'show-toast',
       message: result.ok ? 'room.toasts.linkCopied' : 'room.toasts.linkCopyFailed'
     })
-    this.state.update((state) => ({
+
+    this.updateState((state) => ({
       ...state,
       actionStatus: result.ok ? 'room.status.linkCopied' : 'room.status.linkCopyFailed'
     }))
@@ -273,7 +338,28 @@ export class RoomViewModel extends ViewModel {
     this.effects.emit({ type: 'show-toast', message: 'room.toasts.logsPrepared' })
   }
 
-  private async connectStoredSession(session: StoredJoinSession) {
+  private clearLogs() {
+    this.clearClientLogsUseCase.execute()
+
+    this.effects.emit({ type: 'show-toast', message: 'room.toasts.logsCleared' })
+
+    this.updateState((state) => ({
+      ...state,
+      actionStatus: 'room.status.logsCleared'
+    }))
+  }
+
+  private async connectStoredSession(session: StoredJoinSession, openRoomRequestId?: number) {
+    const requestId = ++this.connectRoomRequestId
+
+    this.updateState((state) => ({
+      ...state,
+      prejoinOpen: false,
+      status: 'connecting',
+      actionStatus: 'room.status.mediaStarting',
+      error: null
+    }))
+
     const result = await this.connectToRoomRtcUseCase.execute({
       roomId: session.roomId,
       participantId: session.participantId,
@@ -283,10 +369,28 @@ export class RoomViewModel extends ViewModel {
       cameraEnabled: hasEnabledSlot(session.snapshot.participants, session.participantId, 'camera')
     })
 
+    if (!this.isActualConnectRoomRequest(requestId)) {
+      return
+    }
+
+    if (openRoomRequestId !== undefined && !this.isActualOpenRoomRequest(openRoomRequestId)) {
+      return
+    }
+
+    if (this.state.value.roomId !== session.roomId) {
+      return
+    }
+
     if (!result.ok) {
       await this.clearJoinSessionUseCase.execute(session.roomId)
+
+      if (!this.isActualConnectRoomRequest(requestId)) {
+        return
+      }
+
       this.effects.emit({ type: 'show-toast', message: 'room.toasts.sessionExpired' })
-      this.state.update((state) => ({
+
+      this.updateState((state) => ({
         ...state,
         status: 'idle',
         prejoinOpen: true,
@@ -294,24 +398,39 @@ export class RoomViewModel extends ViewModel {
         localParticipantId: null,
         localStream: null,
         remoteStreams: {},
+        microphone: {
+          ...state.microphone,
+          loading: false
+        },
+        camera: {
+          ...state.camera,
+          loading: false
+        },
+        screenShare: {
+          ...state.screenShare,
+          enabled: false,
+          loading: false
+        },
         actionStatus: 'room.status.sessionExpired'
       }))
+
       return
     }
 
-    this.state.update((state) => ({
+    this.updateState((state) => ({
       ...state,
-      status: 'connecting',
       participants: session.snapshot.participants as Participant[],
       localParticipantId: session.participantId,
       localStream: state.localStream,
       remoteStreams: state.remoteStreams,
       microphone: {
         ...state.microphone,
+        loading: false,
         enabled: hasEnabledSlot(session.snapshot.participants, session.participantId, 'audio')
       },
       camera: {
         ...state.camera,
+        loading: false,
         enabled: hasEnabledSlot(session.snapshot.participants, session.participantId, 'camera')
       },
       actionStatus: 'room.status.mediaStarting'
@@ -319,10 +438,210 @@ export class RoomViewModel extends ViewModel {
   }
 
   private async leaveRoom() {
+    const roomId = this.state.value.roomId
+
+    this.openRoomRequestId++
+    this.enterRoomRequestId++
+    this.connectRoomRequestId++
+    this.invalidateControlRequests()
+    this.latestDiagnostics = null
+
     this.leaveRoomUseCase.execute()
-    await this.clearJoinSessionUseCase.execute(this.state.value.roomId)
+    await this.clearJoinSessionUseCase.execute(roomId)
+
     this.effects.emit({ type: 'navigate-home' })
   }
+
+  private applyObservedSession(state: RoomUiState, session: RtcSession): RoomUiState {
+    // Observable может отдать старую RTC-сессию уже после открытия другой комнаты.
+    if (state.roomId && session.roomId && state.roomId !== session.roomId) {
+      return state
+    }
+
+    const nextState: RoomUiState = {
+      ...state,
+      status: session.status,
+      roomId: session.roomId || state.roomId,
+      localParticipantId: session.participantId || state.localParticipantId,
+      participants: (session.snapshot?.participants ?? state.participants) as Participant[],
+      localStream: session.localStream,
+      remoteStreams: session.remoteStreams
+    }
+
+    // Если RTC-сессия прислала новый snapshot, UI-контролы лучше синхронизировать с ним.
+    return this.withDiagnostics(this.syncControlsWithLocalParticipant(nextState), session)
+  }
+
+  private createOpeningRoomState(state: RoomUiState, roomId: string): RoomUiState {
+    return {
+      ...state,
+      roomId,
+      prejoinOpen: false,
+      status: 'connecting',
+      participants: [],
+      localParticipantId: null,
+      localStream: null,
+      remoteStreams: {},
+      error: null,
+      actionStatus: 'room.status.checkingRoom',
+      diagnostics: null,
+      microphone: {
+        ...state.microphone,
+        loading: false,
+        error: null
+      },
+      camera: {
+        ...state.camera,
+        loading: false,
+        error: null
+      },
+      screenShare: {
+        ...state.screenShare,
+        enabled: false,
+        loading: false,
+        error: null
+      }
+    }
+  }
+
+  private syncControlsWithLocalParticipant(state: RoomUiState): RoomUiState {
+    if (!state.localParticipantId) {
+      return state
+    }
+
+    const localParticipant = state.participants.find(
+      (participant) => participant.id === state.localParticipantId
+    )
+
+    if (!localParticipant) {
+      return state
+    }
+
+    return {
+      ...state,
+      microphone: {
+        ...state.microphone,
+        enabled: participantHasEnabledSlot(localParticipant, 'audio')
+      },
+      camera: {
+        ...state.camera,
+        enabled: participantHasEnabledSlot(localParticipant, 'camera')
+      },
+      screenShare: {
+        ...state.screenShare,
+        enabled: participantHasEnabledSlot(localParticipant, 'screen')
+      }
+    }
+  }
+
+  private withDiagnostics(state: RoomUiState, session: RtcSession | null): RoomUiState {
+    return {
+      ...state,
+      diagnostics: createDiagnostics(state, session, this.latestDiagnostics)
+    }
+  }
+
+  private updateState(updater: (state: RoomUiState) => RoomUiState) {
+    this.state.update((state) => updater(state))
+  }
+
+  private getControl(state: RoomUiState, control: RoomControlKey): RoomControl {
+    switch (control) {
+      case 'microphone':
+        return state.microphone
+      case 'camera':
+        return state.camera
+      case 'screenShare':
+        return state.screenShare
+    }
+  }
+
+  private updateControl(
+    state: RoomUiState,
+    control: RoomControlKey,
+    updater: (control: RoomControl) => RoomControl
+  ): RoomUiState {
+    switch (control) {
+      case 'microphone':
+        return {
+          ...state,
+          microphone: updater(state.microphone)
+        }
+      case 'camera':
+        return {
+          ...state,
+          camera: updater(state.camera)
+        }
+      case 'screenShare':
+        return {
+          ...state,
+          screenShare: updater(state.screenShare)
+        }
+    }
+  }
+
+  private nextControlRequestId(control: RoomControlKey): number {
+    switch (control) {
+      case 'microphone':
+        return ++this.microphoneRequestId
+      case 'camera':
+        return ++this.cameraRequestId
+      case 'screenShare':
+        return ++this.screenShareRequestId
+    }
+  }
+
+  private isActualControlRequest(control: RoomControlKey, requestId: number): boolean {
+    switch (control) {
+      case 'microphone':
+        return requestId === this.microphoneRequestId
+      case 'camera':
+        return requestId === this.cameraRequestId
+      case 'screenShare':
+        return requestId === this.screenShareRequestId
+    }
+  }
+
+  private invalidateControlRequests() {
+    this.microphoneRequestId++
+    this.cameraRequestId++
+    this.screenShareRequestId++
+  }
+
+  private isActualOpenRoomRequest(requestId: number): boolean {
+    return requestId === this.openRoomRequestId
+  }
+
+  private isActualEnterRoomRequest(requestId: number): boolean {
+    return requestId === this.enterRoomRequestId
+  }
+
+  private isActualConnectRoomRequest(requestId: number): boolean {
+    return requestId === this.connectRoomRequestId
+  }
+}
+
+const roomOpenErrors = {
+  'room-not-found': {
+    actionStatus: 'room.status.roomUnavailable',
+    error: {
+      title: 'room.errors.roomUnavailable.title',
+      description: 'room.errors.roomUnavailable.description',
+      actionLabel: 'room.errors.roomUnavailable.action'
+    }
+  },
+  default: {
+    actionStatus: 'room.status.roomCheckFailed',
+    error: {
+      title: 'room.errors.roomCheckFailed.title',
+      description: 'room.errors.roomCheckFailed.description',
+      actionLabel: 'room.errors.roomCheckFailed.action'
+    }
+  }
+} satisfies Record<'room-not-found' | 'default', RoomOpenErrorConfig>
+
+function roomOpenError(errorType: string): RoomOpenErrorConfig {
+  return errorType === 'room-not-found' ? roomOpenErrors['room-not-found'] : roomOpenErrors.default
 }
 
 function createDiagnostics(
@@ -370,6 +689,7 @@ function describeStreamTracks(stream: MediaStream | null): string {
 
   const audio = stream.getAudioTracks().filter((track) => track.readyState === 'live').length
   const video = stream.getVideoTracks().filter((track) => track.readyState === 'live').length
+
   return `audio=${audio}, video=${video}`
 }
 
@@ -383,7 +703,7 @@ function formatSignals(signals: readonly string[] | undefined): string {
 
 function updateLocalSlot(
   state: RoomUiState,
-  kind: Participant['slots'][number]['kind'],
+  kind: ParticipantSlotKind,
   enabled: boolean,
   publishing: boolean
 ): readonly Participant[] {
@@ -412,11 +732,15 @@ function updateLocalSlot(
 function hasEnabledSlot(
   participants: readonly Participant[],
   participantId: string,
-  kind: Participant['slots'][number]['kind']
+  kind: ParticipantSlotKind
 ): boolean {
   return (
     participants
       .find((participant) => participant.id === participantId)
       ?.slots.some((slot) => slot.kind === kind && slot.enabled) ?? false
   )
+}
+
+function participantHasEnabledSlot(participant: Participant, kind: ParticipantSlotKind): boolean {
+  return participant.slots.some((slot) => slot.kind === kind && slot.enabled)
 }
