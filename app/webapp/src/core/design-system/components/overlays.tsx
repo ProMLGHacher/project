@@ -10,14 +10,14 @@ export function Dialog({
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 grid items-start overflow-y-auto bg-slate-950/50 p-3 sm:place-items-center sm:p-4"
+      className="fixed inset-0 z-50 grid items-start overflow-y-auto bg-slate-950/56 p-3 backdrop-blur-md sm:place-items-center sm:p-4"
       role="presentation"
     >
       <div
         role="dialog"
         aria-modal="true"
         className={cn(
-          'my-3 w-full max-w-lg rounded-2xl border border-border bg-surface p-5 text-surface-foreground shadow-lg sm:my-0',
+          'my-3 w-full max-w-lg rounded-3xl border border-border/80 bg-surface-elevated p-5 text-surface-foreground shadow-lg backdrop-blur-xl sm:my-0 sm:p-6',
           className
         )}
         {...props}
@@ -37,7 +37,12 @@ export function DialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElem
 }
 
 export function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <footer className={cn('mt-4 flex justify-end gap-2', className)} {...props} />
+  return (
+    <footer
+      className={cn('mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+      {...props}
+    />
+  )
 }
 
 export interface DrawerProps extends HTMLAttributes<HTMLDivElement> {
@@ -55,9 +60,13 @@ export function Drawer({ open, side = 'right', className, ...props }: DrawerProp
   }[side]
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/50" role="presentation">
+    <div className="fixed inset-0 z-50 bg-slate-950/56 backdrop-blur-md" role="presentation">
       <aside
-        className={cn('fixed border border-border bg-surface p-5 shadow-lg', sideClass, className)}
+        className={cn(
+          'fixed border border-border/80 bg-surface-elevated p-5 shadow-lg backdrop-blur-xl',
+          sideClass,
+          className
+        )}
         {...props}
       />
     </div>

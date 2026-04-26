@@ -13,7 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'min-h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-foreground transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'min-h-11 w-full rounded-2xl border border-input/90 bg-surface-overlay px-4 text-sm text-foreground shadow-sm backdrop-blur-sm transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
       {...props}
@@ -50,7 +50,7 @@ export const Textarea = forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      'min-h-24 w-full resize-y rounded-lg border border-input bg-surface p-3 text-sm text-foreground transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+      'min-h-24 w-full resize-y rounded-2xl border border-input/90 bg-surface-overlay p-4 text-sm text-foreground shadow-sm backdrop-blur-sm transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
       className
     )}
     {...props}
@@ -112,7 +112,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
       aria-checked={checked}
       disabled={disabled}
       className={cn(
-        'relative inline-flex h-6 w-11 rounded-full p-0.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'relative inline-flex h-7 w-12 rounded-full border border-border/70 p-0.5 shadow-inner transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
         checked ? 'bg-primary' : 'bg-muted',
         className
       )}
@@ -143,7 +143,7 @@ export const NativeSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<H
     <select
       ref={ref}
       className={cn(
-        'min-h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'min-h-11 w-full rounded-2xl border border-input/90 bg-surface-overlay px-4 text-sm text-foreground shadow-sm backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         className
       )}
       {...props}

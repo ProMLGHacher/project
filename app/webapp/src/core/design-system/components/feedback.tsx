@@ -6,11 +6,11 @@ export interface AlertProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const alertVariants: Record<NonNullable<AlertProps['variant']>, string> = {
-  default: 'border-border',
-  success: 'border-success/60',
-  warning: 'border-warning/70',
-  destructive: 'border-destructive/70',
-  info: 'border-info/70'
+  default: 'border-border/80',
+  success: 'border-success/40 bg-success/10',
+  warning: 'border-warning/45 bg-warning/10',
+  destructive: 'border-destructive/45 bg-destructive/10',
+  info: 'border-info/40 bg-info/10'
 }
 
 export function Alert({ className, variant = 'default', ...props }: AlertProps) {
@@ -18,7 +18,7 @@ export function Alert({ className, variant = 'default', ...props }: AlertProps) 
     <div
       role="status"
       className={cn(
-        'rounded-xl border bg-surface p-4 text-surface-foreground',
+        'rounded-3xl border bg-surface-elevated p-4 text-surface-foreground backdrop-blur-xl',
         alertVariants[variant],
         className
       )}
@@ -65,7 +65,7 @@ export function Toast({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     <div
       role="status"
       className={cn(
-        'rounded-2xl border border-border bg-surface p-4 text-surface-foreground shadow-md',
+        'rounded-3xl border border-border/80 bg-surface-elevated p-4 text-surface-foreground shadow-md backdrop-blur-xl',
         className
       )}
       {...props}

@@ -11,7 +11,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <section
       className={cn(
-        'rounded-2xl border border-border bg-surface text-surface-foreground shadow-sm',
+        'rounded-3xl border border-border/80 bg-surface-elevated text-surface-foreground shadow-sm backdrop-blur-xl',
         className
       )}
       {...props}
@@ -20,7 +20,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('border-b border-border p-5', className)} {...props} />
+  return <div className={cn('border-b border-border/80 p-5 sm:p-6', className)} {...props} />
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
@@ -30,22 +30,22 @@ export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingEle
 }
 
 export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('mt-1 text-sm text-muted-foreground', className)} {...props} />
+  return <p className={cn('mt-1 text-sm leading-6 text-muted-foreground', className)} {...props} />
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-5', className)} {...props} />
+  return <div className={cn('p-5 sm:p-6', className)} {...props} />
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <footer className={cn('border-t border-border p-5', className)} {...props} />
+  return <footer className={cn('border-t border-border/80 p-5 sm:p-6', className)} {...props} />
 }
 
 export function Sidebar({ className, ...props }: HTMLAttributes<HTMLElement>) {
   return (
     <aside
       className={cn(
-        'min-w-64 rounded-2xl border border-border bg-surface p-4 shadow-sm',
+        'min-w-64 rounded-3xl border border-border/80 bg-surface-elevated p-4 shadow-sm backdrop-blur-xl',
         className
       )}
       {...props}

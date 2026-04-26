@@ -4,12 +4,12 @@
 
 ## Компоненты продукта
 
-| Компонент | Путь | Зона ответственности |
-| --- | --- | --- |
-| Webapp | `app/webapp` | Пользовательский UI, feature-флоу, API/signaling clients, media UX. |
-| KVT framework | `app/kvt` | Общие framework primitives: DI, lifecycle ViewModel, flows, theme, React adapter. |
-| Backend | `backend` | Room/session lifecycle, REST API, signaling, SFU orchestration, health/API docs. |
-| Deploy | `deploy` | Runtime-топология: nginx gateway, backend, web static app, TURN. |
+| Компонент     | Путь         | Зона ответственности                                                              |
+| ------------- | ------------ | --------------------------------------------------------------------------------- |
+| Webapp        | `app/webapp` | Пользовательский UI, feature-флоу, API/signaling clients, media UX.               |
+| KVT framework | `app/kvt`    | Общие framework primitives: DI, lifecycle ViewModel, flows, theme, React adapter. |
+| Backend       | `backend`    | Room/session lifecycle, REST API, signaling, SFU orchestration, health/API docs.  |
+| Deploy        | `deploy`     | Runtime-топология: nginx gateway, backend, web static app, TURN.                  |
 
 ## Высокоуровневая архитектура
 

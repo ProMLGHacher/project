@@ -55,16 +55,16 @@ docker compose up -d --build
 
 ## Основные команды (из корня)
 
-| Команда | Назначение |
-| --- | --- |
-| `npm run dev` | Запуск webapp в dev-режиме. |
-| `npm run build` | Сборка workspace (`app`). |
-| `npm run lint` | ESLint для webapp + Go tests backend. |
+| Команда                | Назначение                              |
+| ---------------------- | --------------------------------------- |
+| `npm run dev`          | Запуск webapp в dev-режиме.             |
+| `npm run build`        | Сборка workspace (`app`).               |
+| `npm run lint`         | ESLint для webapp + Go tests backend.   |
 | `npm run test:backend` | Только backend тесты (`go test ./...`). |
-| `npm run format` | Форматирование Prettier + `gofmt`. |
-| `npm run docs:dev` | Локальный запуск документации. |
-| `npm run docs:build` | Сборка документации. |
-| `npm run docs:preview` | Просмотр собранной документации. |
+| `npm run format`       | Форматирование Prettier + `gofmt`.      |
+| `npm run docs:dev`     | Локальный запуск документации.          |
+| `npm run docs:build`   | Сборка документации.                    |
+| `npm run docs:preview` | Просмотр собранной документации.        |
 
 ## Backend endpoints (локально)
 

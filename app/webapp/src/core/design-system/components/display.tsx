@@ -6,7 +6,7 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const badgeVariants: Record<NonNullable<BadgeProps['variant']>, string> = {
-  default: 'bg-muted text-muted-foreground',
+  default: 'bg-muted/85 text-muted-foreground',
   secondary: 'bg-accent text-accent-foreground',
   success: 'bg-success text-on-feedback',
   warning: 'bg-warning text-slate-950',
@@ -18,7 +18,7 @@ export function Badge({ className, variant = 'default', ...props }: BadgeProps) 
   return (
     <span
       className={cn(
-        'inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-bold',
+        'inline-flex w-fit items-center rounded-full border border-transparent px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide',
         badgeVariants[variant],
         className
       )}
@@ -37,7 +37,7 @@ export function Avatar({ className, src, alt = '', fallback, ...props }: AvatarP
   return (
     <div
       className={cn(
-        'inline-grid size-10 place-items-center overflow-hidden rounded-full bg-muted font-bold text-muted-foreground',
+        'inline-grid size-10 place-items-center overflow-hidden rounded-full border border-white/10 bg-muted font-bold text-muted-foreground shadow-sm',
         className
       )}
       {...props}
@@ -78,7 +78,7 @@ export function Empty({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'grid min-h-48 place-items-center rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground',
+        'grid min-h-48 place-items-center rounded-3xl border border-dashed border-border/80 bg-surface-elevated p-8 text-center text-muted-foreground backdrop-blur-xl',
         className
       )}
       {...props}

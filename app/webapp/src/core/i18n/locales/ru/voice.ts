@@ -6,6 +6,14 @@ export default {
       'Откройте конференцию, отправьте ссылку и дайте участникам войти с заранее выбранными микрофоном и камерой.',
     createRoom: 'Создать комнату',
     createHint: 'Микрофон и камеру можно настроить перед входом.',
+    metrics: {
+      audioLabel: 'Аудио',
+      audioValue: 'Минимальная задержка',
+      videoLabel: 'Видео',
+      videoValue: 'Бесшовное включение',
+      flowLabel: 'Вход',
+      flowValue: 'Подключение в одно касание'
+    },
     joinTitle: 'Войти в комнату',
     joinDescription: 'Вставьте id комнаты или полную ссылку.',
     roomInputPlaceholder: 'clear-river-42',
@@ -67,6 +75,7 @@ export default {
       participants_many: '{{count}} участников',
       participants_other: '{{count}} участника',
       techInfo: 'Тех. инфо',
+      voiceMode: 'Голос в приоритете',
       copyLink: 'Скопировать ссылку',
       leave: 'Выйти'
     },

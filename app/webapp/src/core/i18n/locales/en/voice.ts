@@ -9,6 +9,14 @@ export default defineResource<typeof ruVoice>()({
       'Create a conference, share the link, and let people join with microphone and camera choices already prepared.',
     createRoom: 'Create room',
     createHint: 'You can adjust mic and camera before entering.',
+    metrics: {
+      audioLabel: 'Audio',
+      audioValue: 'Low latency',
+      videoLabel: 'Video',
+      videoValue: 'Seamless toggle',
+      flowLabel: 'Flow',
+      flowValue: 'Join in one tap'
+    },
     joinTitle: 'Join a room',
     joinDescription: 'Paste a room id or the full room link.',
     roomInputPlaceholder: 'clear-river-42',
@@ -68,6 +76,7 @@ export default defineResource<typeof ruVoice>()({
       participants_many: '{{count}} participants',
       participants_other: '{{count}} participants',
       techInfo: 'Tech info',
+      voiceMode: 'Voice first',
       copyLink: 'Copy link',
       leave: 'Leave'
     },

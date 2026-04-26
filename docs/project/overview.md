@@ -4,12 +4,12 @@ This page gives a fast, full-system map for onboarding.
 
 ## Product components
 
-| Component | Path | Responsibility |
-| --- | --- | --- |
-| Webapp | `app/webapp` | User-facing UI, feature flows, API/signaling clients, media UX. |
-| KVT framework | `app/kvt` | Shared app primitives: DI, ViewModel lifecycle, flows, theme, React adapter. |
-| Backend | `backend` | Room/session lifecycle, REST API, signaling, SFU orchestration, health/API docs. |
-| Deploy | `deploy` | Runtime topology: nginx gateway, backend, web static app, TURN. |
+| Component     | Path         | Responsibility                                                                   |
+| ------------- | ------------ | -------------------------------------------------------------------------------- |
+| Webapp        | `app/webapp` | User-facing UI, feature flows, API/signaling clients, media UX.                  |
+| KVT framework | `app/kvt`    | Shared app primitives: DI, ViewModel lifecycle, flows, theme, React adapter.     |
+| Backend       | `backend`    | Room/session lifecycle, REST API, signaling, SFU orchestration, health/API docs. |
+| Deploy        | `deploy`     | Runtime topology: nginx gateway, backend, web static app, TURN.                  |
 
 ## High-level architecture
 

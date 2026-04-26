@@ -39,74 +39,95 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   })
 
   return (
-    <section className="mx-auto grid min-h-full w-full max-w-6xl items-start px-4 pb-8 sm:px-6 sm:pb-10 lg:place-items-center">
-      <div className="grid w-full gap-4 sm:gap-6 lg:grid-cols-5 lg:items-center">
-        <Card className="overflow-hidden rounded-4xl border-primary/15 bg-surface lg:col-span-3">
-          <CardContent className="grid gap-6 p-5 sm:p-8 md:gap-8 md:p-10">
+    <section className="mx-auto grid min-h-full w-full max-w-7xl items-start px-3 sm:px-4 md:px-6">
+      <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,0.8fr)] lg:items-stretch">
+        <Card className="relative overflow-hidden rounded-[calc(var(--radius-2xl)+0.5rem)] border-primary/10 bg-linear-to-br from-surface via-surface to-accent/35">
+          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-2/5 bg-radial from-primary/18 via-primary/7 to-transparent blur-2xl lg:block" />
+          <CardContent className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-6 lg:p-10">
             <div className="max-w-2xl">
               <Badge variant="info">{t('home.badge')}</Badge>
-              <h1 className="mt-4 font-display text-3xl font-black tracking-tight text-surface-foreground sm:text-4xl md:mt-5 md:text-6xl">
+              <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-surface-foreground sm:text-5xl lg:text-6xl">
                 {t('home.title')}
               </h1>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base md:mt-5 md:text-lg md:leading-7">
+              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
                 {t('home.description')}
               </p>
+
+              <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
+                <Button
+                  className="min-h-16 w-full rounded-3xl px-7 text-base shadow-lg shadow-primary/20 sm:w-auto sm:text-lg"
+                  disabled={!uiState.createRoomButtonState.enabled}
+                  onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
+                  type="button"
+                >
+                  {t('home.createRoom')}
+                </Button>
+                <div className="rounded-3xl border border-border/70 bg-surface-overlay px-4 py-3 text-sm text-muted-foreground backdrop-blur-sm sm:max-w-64">
+                  {t('home.createHint')}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <Button
-                className="min-h-14 w-full rounded-2xl px-6 text-base shadow-lg shadow-primary/20 sm:min-h-16 sm:w-auto sm:px-8 sm:text-lg"
-                disabled={!uiState.createRoomButtonState.enabled}
-                onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
-                type="button"
-              >
-                {t('home.createRoom')}
-              </Button>
-              <p className="mt-3 text-sm text-muted-foreground">{t('home.createHint')}</p>
+            <div className="grid gap-3 self-end">
+              <HeroMetric
+                label={t('home.metrics.audioLabel')}
+                value={t('home.metrics.audioValue')}
+              />
+              <HeroMetric
+                label={t('home.metrics.videoLabel')}
+                value={t('home.metrics.videoValue')}
+              />
+              <HeroMetric label={t('home.metrics.flowLabel')} value={t('home.metrics.flowValue')} />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-4xl lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t('home.joinTitle')}</CardTitle>
+        <Card className="rounded-[calc(var(--radius-2xl)+0.5rem)]">
+          <CardHeader className="border-b-0 pb-0">
+            <CardTitle className="text-2xl">{t('home.joinTitle')}</CardTitle>
             <CardDescription>{t('home.joinDescription')}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Field>
+          <CardContent className="pt-5">
+            <Field className="gap-4">
               {uiState.feedback && (
                 <Alert variant="warning">
                   <AlertDescription>{t(uiState.feedback)}</AlertDescription>
                 </Alert>
               )}
-              <InputGroup className="flex-col gap-2 sm:flex-row">
-                <Input
-                  aria-invalid={uiState.idOrLinkToJoinState.showError}
-                  placeholder={t('home.roomInputPlaceholder')}
-                  type="text"
-                  value={uiState.idOrLinkToJoinState.value}
-                  onChange={(event) =>
-                    viewModel.onEvent({
-                      type: 'id-or-link-to-join-changed',
-                      value: event.target.value
-                    })
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      viewModel.onEvent({ type: 'join-pressed' })
+
+              <div className="rounded-3xl border border-border/70 bg-muted/35 p-3">
+                <InputGroup className="flex-col gap-3">
+                  <Input
+                    aria-invalid={uiState.idOrLinkToJoinState.showError}
+                    className="min-h-13"
+                    placeholder={t('home.roomInputPlaceholder')}
+                    type="text"
+                    value={uiState.idOrLinkToJoinState.value}
+                    onChange={(event) =>
+                      viewModel.onEvent({
+                        type: 'id-or-link-to-join-changed',
+                        value: event.target.value
+                      })
                     }
-                  }}
-                />
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={!uiState.joinButtonState.enabled || uiState.joinButtonState.loading}
-                  onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
-                  type="button"
-                  variant="secondary"
-                >
-                  {uiState.joinButtonState.loading ? t('home.checking') : t('home.continue')}
-                </Button>
-              </InputGroup>
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        viewModel.onEvent({ type: 'join-pressed' })
+                      }
+                    }}
+                  />
+                  <Button
+                    className="w-full"
+                    disabled={!uiState.joinButtonState.enabled || uiState.joinButtonState.loading}
+                    onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
+                    size="lg"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {uiState.joinButtonState.loading ? t('home.checking') : t('home.continue')}
+                  </Button>
+                </InputGroup>
+              </div>
+
               {uiState.idOrLinkToJoinState.showError ? (
                 <FieldHint className="text-destructive">
                   {uiState.idOrLinkToJoinState.error ? t(uiState.idOrLinkToJoinState.error) : ''}
@@ -119,5 +140,18 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
         </Card>
       </div>
     </section>
+  )
+}
+
+function HeroMetric({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-surface-overlay p-4 backdrop-blur-sm">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-lg font-black tracking-tight text-surface-foreground">
+        {value}
+      </p>
+    </div>
   )
 }
