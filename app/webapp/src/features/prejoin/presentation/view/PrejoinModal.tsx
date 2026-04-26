@@ -6,8 +6,6 @@ import {
   AlertDescription,
   Badge,
   Button,
-  Card,
-  CardContent,
   Dialog,
   Field,
   FieldHint,
@@ -65,16 +63,16 @@ export function PrejoinModal({
 
   return (
     <Dialog
-      className="max-h-[calc(100dvh-0.75rem)] max-w-6xl overflow-hidden rounded-4xl p-0 sm:max-h-[calc(100dvh-2rem)]"
+      className="!my-0 w-full !max-w-[74rem] overflow-hidden rounded-3xl bg-surface-elevated !p-0 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] xl:max-h-[min(44rem,calc(100dvh-2rem))]"
       open={open}
     >
-      <div className="flex max-h-[calc(100dvh-0.75rem)] flex-col overflow-y-auto bg-surface-elevated sm:max-h-[calc(100dvh-2rem)] xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:overflow-hidden">
-        <section className="flex min-h-0 flex-col border-b border-border/80 bg-background xl:border-b-0 xl:border-r">
-          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
+      <div className="flex max-h-[calc(100dvh-1.5rem)] min-h-0 flex-col overflow-y-auto overscroll-contain bg-surface-elevated sm:max-h-[calc(100dvh-2rem)] xl:grid xl:grid-cols-[minmax(34rem,1fr)_minmax(20rem,22rem)] xl:overflow-hidden">
+        <section className="flex shrink-0 flex-col border-b border-border/80 xl:min-h-0 xl:shrink xl:border-b-0 xl:border-r xl:overflow-y-auto xl:overscroll-contain">
+          <div className="shrink-0 px-5 pt-5 sm:px-6 sm:pt-6">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="default">{t('prejoin.badge')}</Badge>
-                <Badge className="truncate">{uiState.roomId}</Badge>
+                <Badge className="max-w-full truncate sm:max-w-80">{uiState.roomId}</Badge>
               </div>
               <h2 className="mt-3 text-xl font-medium text-foreground sm:text-2xl">
                 {t('prejoin.title')}
@@ -85,8 +83,8 @@ export function PrejoinModal({
             </div>
           </div>
 
-          <div className="grid gap-4 px-4 pb-4 sm:px-6 sm:pb-6 lg:gap-5">
-            <div className="overflow-hidden rounded-4xl border border-border/70 bg-slate-950 shadow-lg">
+          <div className="grid min-h-0 gap-4 px-5 py-5 sm:px-6 sm:py-6 xl:gap-5">
+            <div className="relative h-52 overflow-hidden rounded-3xl border border-border/70 bg-slate-950 shadow-lg sm:h-64 xl:h-[22rem]">
               {uiState.cameraEnabled ? (
                 <VideoAspectRatio
                   ref={previewRef}
@@ -94,21 +92,18 @@ export function PrejoinModal({
                   autoPlay
                   muted
                   playsInline
-                  className="aspect-[16/12] w-full rounded-none object-cover sm:aspect-[16/10] xl:aspect-[16/9]"
+                  className="h-full w-full rounded-none object-cover"
                 />
               ) : (
-                <div className="grid aspect-[16/12] place-items-center p-8 text-center text-white sm:aspect-[16/10] xl:aspect-[16/9]">
-                  <div>
-                    <div className="mx-auto grid size-20 place-items-center rounded-full bg-white/10 text-3xl font-medium sm:size-24 sm:text-4xl">
-                      {uiState.displayName.value.trim().slice(0, 1).toUpperCase() || 'K'}
-                    </div>
-                    <p className="mt-4 text-sm text-slate-300">{t('prejoin.cameraOff')}</p>
+                <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-white">
+                  <div className="grid size-20 place-items-center rounded-full bg-white/10 text-3xl font-medium leading-none sm:size-24 sm:text-4xl">
+                    {uiState.displayName.value.trim().slice(0, 1).toUpperCase() || 'K'}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <ToggleSummaryCard
                 checked={uiState.micEnabled}
                 description={uiState.micEnabled ? t('prejoin.micOn') : t('prejoin.micOff')}
@@ -127,11 +122,11 @@ export function PrejoinModal({
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col bg-surface">
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+        <section className="flex shrink-0 flex-col xl:min-h-0 xl:max-h-full xl:shrink">
+          <div className="px-5 py-5 sm:px-6 sm:py-6 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain">
             <div className="grid gap-4">
               {uiState.error && (
-                <Alert>
+                <Alert className="rounded-3xl bg-transparent shadow-none backdrop-blur-none">
                   <AlertDescription>{t(uiState.error)}</AlertDescription>
                 </Alert>
               )}
@@ -141,7 +136,7 @@ export function PrejoinModal({
                 <Input
                   id="display-name"
                   autoFocus
-                  className="min-h-12 rounded-3xl px-4"
+                  className="min-h-12 rounded-3xl bg-transparent px-4"
                   placeholder={t('prejoin.namePlaceholder')}
                   value={uiState.displayName.value}
                   onChange={(event) =>
@@ -159,7 +154,7 @@ export function PrejoinModal({
                 <Label htmlFor="microphone">{t('prejoin.microphone')}</Label>
                 <NativeSelect
                   id="microphone"
-                  className="min-h-12 rounded-3xl px-4"
+                  className="min-h-12 rounded-3xl bg-transparent px-4"
                   value={uiState.selectedMicrophoneId ?? ''}
                   onChange={(event) =>
                     viewModel.onEvent({
@@ -181,7 +176,7 @@ export function PrejoinModal({
                 <Label htmlFor="camera">{t('prejoin.camera')}</Label>
                 <NativeSelect
                   id="camera"
-                  className="min-h-12 rounded-3xl px-4"
+                  className="min-h-12 rounded-3xl bg-transparent px-4"
                   value={uiState.selectedCameraId ?? ''}
                   onChange={(event) =>
                     viewModel.onEvent({
@@ -201,7 +196,7 @@ export function PrejoinModal({
             </div>
           </div>
 
-          <div className="border-t border-border/80 bg-surface px-4 py-4 sm:px-5">
+          <div className="shrink-0 border-t border-border/80 bg-surface-elevated px-5 py-5 sm:px-6">
             <Button
               className="min-h-12 w-full rounded-full"
               disabled={!uiState.joinButton.enabled || uiState.joinButton.loading}
@@ -229,14 +224,12 @@ function ToggleSummaryCard({
   readonly onChange: (checked: boolean) => void
 }) {
   return (
-    <Card className="rounded-4xl border-border/80">
-      <CardContent className="flex items-center justify-between gap-4 p-4">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-        </div>
-        <Switch checked={checked} onCheckedChange={onChange} />
-      </CardContent>
-    </Card>
+    <div className="flex items-center justify-between gap-4 rounded-3xl border border-border/80 bg-transparent p-4">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import { type HTMLAttributes } from 'react'
+import { useEffect, type HTMLAttributes } from 'react'
 import { cn } from '../utils'
 
 export function Dialog({
@@ -7,10 +7,23 @@ export function Dialog({
   children,
   ...props
 }: HTMLAttributes<HTMLDivElement> & { open?: boolean }) {
+  useEffect(() => {
+    if (!open) return
+    const originalDocumentOverflow = document.documentElement.style.overflow
+    const originalOverflow = document.body.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.documentElement.style.overflow = originalDocumentOverflow
+      document.body.style.overflow = originalOverflow
+    }
+  }, [open])
+
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 grid items-start overflow-y-auto bg-slate-950/56 p-3 backdrop-blur-md sm:place-items-center sm:p-4"
+      className="fixed inset-0 z-50 grid items-start overflow-y-auto overscroll-contain bg-slate-950/56 p-3 backdrop-blur-md sm:place-items-center sm:p-4"
       role="presentation"
     >
       <div
