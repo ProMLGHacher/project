@@ -1,8 +1,14 @@
 # Environment variables
 
-Переменные окружения настраиваются в `deploy/.env`.
+Переменные окружения настраиваются отдельно для каждого контура:
 
-Начни с:
+- `deploy/.env.dev` - готовое localhost-окружение для разработки.
+- `deploy/.env` - production/server окружение.
+
+Для локальной разработки обычно ничего создавать не нужно, потому что `deploy/.env.dev` уже
+подготовлен.
+
+Для server/prod-настройки начни с:
 
 ```bash
 cd deploy
@@ -61,10 +67,11 @@ cp .env.example .env
 
 ## Frontend build
 
-| Variable             | Example                           | Описание                                                                                 |
-| -------------------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`  | empty                             | Обычно пустой, потому что nginx отдаёт frontend и проксирует `/api` и `/ws` same-origin. |
-| `VITE_ALLOWED_HOSTS` | `localhost,127.0.0.1,example.com` | Hosts, разрешённые Vite dev server. Используется для local development.                  |
+| Variable                | Example                           | Описание                                                                                 |
+| ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`     | empty                             | Обычно пустой, потому что nginx отдаёт frontend и проксирует `/api` и `/ws` same-origin. |
+| `VITE_ALLOWED_HOSTS`    | `localhost,127.0.0.1,example.com` | Hosts, разрешённые Vite dev server. Используется для local development.                  |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8023`           | Target, который Vite использует, если фронт запускается напрямую в dev-режиме вне nginx. |
 
 Production Docker build отдаёт static files через nginx, поэтому runtime API access должен
 оставаться same-origin.

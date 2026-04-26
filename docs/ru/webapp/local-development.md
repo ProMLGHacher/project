@@ -24,20 +24,52 @@ npm run dev
 
 Команда запускает `app/webapp` через Vite.
 
-## Запуск всего локального стека
+## Запуск dev-контура
 
-Используй этот режим, когда нужны REST API, WebSocket signaling, SFU, TURN и nginx gateway вместе:
+Используй этот режим, когда нужны REST API, WebSocket signaling, SFU, TURN, nginx gateway и hot
+reload фронта вместе:
 
 ```bash
-cd deploy
-cp .env.example .env
-docker compose up -d --build
+npm run stack:dev
 ```
 
 Открыть:
 
 ```text
 http://localhost:8023
+```
+
+Dev-контур использует:
+
+- `deploy/docker-compose.yml` как общую базу;
+- `deploy/docker-compose.dev.yml` как dev override;
+- `deploy/.env.dev` как готовое localhost-окружение.
+
+Остановить:
+
+```bash
+npm run stack:dev:down
+```
+
+Посмотреть итоговую Compose-конфигурацию:
+
+```bash
+npm run stack:dev:config
+```
+
+## Запуск production-like контура
+
+Используй этот режим, когда нужно проверить именно собранный фронт так, как он будет жить на
+сервере:
+
+```bash
+npm run stack:prod
+```
+
+Остановить:
+
+```bash
+npm run stack:prod:down
 ```
 
 ## Проверка медиа локально
@@ -71,9 +103,7 @@ http://localhost:8023/healthz
 ## Debug compose
 
 ```bash
-cd deploy
-docker compose ps
-docker compose logs --tail=100 nginx backend web turn
+npm run stack:dev:logs
 ```
 
 Если nginx отдаёт `502`, сначала проверь backend health:

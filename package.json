@@ -4,6 +4,13 @@
   "scripts": {
     "build": "npm --prefix app run build",
     "dev": "npm --prefix app run dev -w webapp",
+    "stack:prod": "cd deploy && docker compose up -d --build",
+    "stack:prod:down": "cd deploy && docker compose down",
+    "stack:prod:logs": "cd deploy && docker compose logs -f --tail=200",
+    "stack:dev": "cd deploy && docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "stack:dev:down": "cd deploy && docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml down",
+    "stack:dev:logs": "cd deploy && docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml logs -f --tail=200",
+    "stack:dev:config": "cd deploy && docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml config",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",

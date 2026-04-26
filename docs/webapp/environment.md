@@ -1,8 +1,14 @@
 # Environment Variables
 
-Environment variables are configured in `deploy/.env`.
+Environment variables are configured per contour:
 
-Start from:
+- `deploy/.env.dev` - ready-to-run localhost development.
+- `deploy/.env` - production/server environment.
+
+For development, you usually do not need to create anything manually because `deploy/.env.dev` is
+already prepared.
+
+For production/server setup, start from:
 
 ```bash
 cd deploy
@@ -61,10 +67,11 @@ For production, firewall rules must allow:
 
 ## Frontend build
 
-| Variable             | Example                           | Description                                                                           |
-| -------------------- | --------------------------------- | ------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`  | empty                             | Usually empty because nginx serves frontend and proxies `/api` and `/ws` same-origin. |
-| `VITE_ALLOWED_HOSTS` | `localhost,127.0.0.1,example.com` | Hosts allowed by Vite dev server. Used for local development.                         |
+| Variable                | Example                           | Description                                                                           |
+| ----------------------- | --------------------------------- | ------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`     | empty                             | Usually empty because nginx serves frontend and proxies `/api` and `/ws` same-origin. |
+| `VITE_ALLOWED_HOSTS`    | `localhost,127.0.0.1,example.com` | Hosts allowed by Vite dev server. Used for local development.                         |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8023`           | Target used by Vite when the frontend is run directly in dev mode outside nginx.      |
 
 Production Docker builds serve static files through nginx, so runtime API access should stay
 same-origin.

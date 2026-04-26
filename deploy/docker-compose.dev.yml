@@ -1,0 +1,58 @@
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace
+    volumes:
+      - ../backend:/workspace
+      - backend_go_mod_cache:/go/pkg/mod
+      - backend_go_build_cache:/root/.cache/go-build
+
+  web:
+    build:
+      context: ../app
+      dockerfile: webapp/Dockerfile.dev
+    working_dir: /workspace
+    environment:
+      CHOKIDAR_USEPOLLING: 'true'
+      VITE_ALLOWED_HOSTS: '${VITE_ALLOWED_HOSTS}'
+      VITE_API_PROXY_TARGET: '${VITE_API_PROXY_TARGET:-http://localhost:8023}'
+    command:
+      - /bin/sh
+      - -lc
+      - >
+        npm install --include=optional &&
+        npm install -w webapp --no-save
+        @rolldown/binding-linux-x64-gnu@1.0.0-rc.16
+        lightningcss-linux-x64-gnu@1.32.0
+        @tailwindcss/oxide-linux-x64-gnu@4.2.3 &&
+        npm run build -w @kvt/core &&
+        npm run build -w @kvt/react &&
+        npm run build -w @kvt/theme &&
+        (npm run watch -w @kvt/core &) &&
+        (npm run watch -w @kvt/react &) &&
+        (npm run watch -w @kvt/theme &) &&
+        npm run dev -w webapp -- --host 0.0.0.0 --port 5173 --strictPort
+    volumes:
+      - ../app:/workspace
+      - app_node_modules:/workspace/node_modules
+      - app_kvt_core_dist:/workspace/kvt/core/dist
+      - app_kvt_react_dist:/workspace/kvt/react/dist
+      - app_kvt_theme_dist:/workspace/kvt/theme/dist
+      - app_webapp_node_modules:/workspace/webapp/node_modules
+    expose:
+      - '5173'
+
+  nginx:
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  backend_go_mod_cache:
+  backend_go_build_cache:
+  app_node_modules:
+  app_kvt_core_dist:
+  app_kvt_react_dist:
+  app_kvt_theme_dist:
+  app_webapp_node_modules:

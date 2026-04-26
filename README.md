@@ -42,33 +42,56 @@
 npm run dev
 ```
 
-### Полный стек (E2E с backend + TURN)
+### Полный dev-стек (E2E с backend + TURN + hot reload)
 
 ```bash
-cd deploy
-docker compose up -d --build
+npm run stack:dev
 ```
 
 Приложение будет доступно через gateway:
 
 `http://localhost:8023`
 
+Остановить dev-контур:
+
+```bash
+npm run stack:dev:down
+```
+
+### Production-like контур
+
+```bash
+npm run stack:prod
+```
+
+Остановить production-like контур:
+
+```bash
+npm run stack:prod:down
+```
+
 ## Основные команды (из корня)
 
-| Команда                | Назначение                              |
-| ---------------------- | --------------------------------------- |
-| `npm run dev`          | Запуск webapp в dev-режиме.             |
-| `npm run build`        | Сборка workspace (`app`).               |
-| `npm run lint`         | ESLint для webapp + Go tests backend.   |
-| `npm run test:backend` | Только backend тесты (`go test ./...`). |
-| `npm run format`       | Форматирование Prettier + `gofmt`.      |
-| `npm run docs:dev`     | Локальный запуск документации.          |
-| `npm run docs:build`   | Сборка документации.                    |
-| `npm run docs:preview` | Просмотр собранной документации.        |
+| Команда                   | Назначение                              |
+| ------------------------- | --------------------------------------- |
+| `npm run dev`             | Запуск webapp в dev-режиме.             |
+| `npm run stack:dev`       | Docker dev-контур с hot reload.         |
+| `npm run stack:dev:down`  | Остановка dev-контура.                  |
+| `npm run stack:dev:logs`  | Логи dev-контура.                       |
+| `npm run stack:prod`      | Production-like Docker контур.          |
+| `npm run stack:prod:down` | Остановка production-контура.           |
+| `npm run stack:prod:logs` | Логи production-контура.                |
+| `npm run build`           | Сборка workspace (`app`).               |
+| `npm run lint`            | ESLint для webapp + Go tests backend.   |
+| `npm run test:backend`    | Только backend тесты (`go test ./...`). |
+| `npm run format`          | Форматирование Prettier + `gofmt`.      |
+| `npm run docs:dev`        | Локальный запуск документации.          |
+| `npm run docs:build`      | Сборка документации.                    |
+| `npm run docs:preview`    | Просмотр собранной документации.        |
 
 ## Backend endpoints (локально)
 
-Когда поднят `deploy`-стек:
+Когда поднят любой Docker-контур:
 
 - Swagger UI: `http://localhost:8023/api/swagger`
 - OpenAPI JSON: `http://localhost:8023/api/openapi.json`
@@ -79,8 +102,6 @@ docker compose up -d --build
 Быстрая проверка при `502`/недоступности API:
 
 ```bash
-cd deploy
-docker compose ps
-docker compose logs --tail=100 nginx backend web
+npm run stack:dev:logs
 curl -I http://127.0.0.1:8023/healthz
 ```

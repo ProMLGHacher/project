@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 const allowedHosts = process.env.VITE_ALLOWED_HOSTS?.split(',')
   .map((host) => host.trim())
   .filter(Boolean)
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET?.trim() || 'http://localhost:8023'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,9 +25,14 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'https://kvt.araik.dev',
+        target: apiProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
+      },
+      '/ws': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        ws: true
       }
     }
   }

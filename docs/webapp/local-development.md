@@ -24,20 +24,51 @@ npm run dev
 
 The command starts `app/webapp` through Vite.
 
-## Run the full local stack
+## Run the development contour
 
-Use this mode when you need REST API, WebSocket signaling, SFU, TURN, and nginx gateway together:
+Use this mode when you need REST API, WebSocket signaling, SFU, TURN, nginx gateway, and frontend
+hot reload together:
 
 ```bash
-cd deploy
-cp .env.example .env
-docker compose up -d --build
+npm run stack:dev
 ```
 
 Open:
 
 ```text
 http://localhost:8023
+```
+
+The dev contour uses:
+
+- `deploy/docker-compose.yml` as the shared base;
+- `deploy/docker-compose.dev.yml` as the development override;
+- `deploy/.env.dev` as the ready-to-run localhost environment.
+
+Stop it with:
+
+```bash
+npm run stack:dev:down
+```
+
+Inspect the merged compose config with:
+
+```bash
+npm run stack:dev:config
+```
+
+## Run the production-like contour
+
+Use this mode when you want to validate the built frontend exactly as the server serves it:
+
+```bash
+npm run stack:prod
+```
+
+Stop it with:
+
+```bash
+npm run stack:prod:down
 ```
 
 ## Local media checks
@@ -71,9 +102,7 @@ http://localhost:8023/healthz
 ## Debugging local compose
 
 ```bash
-cd deploy
-docker compose ps
-docker compose logs --tail=100 nginx backend web turn
+npm run stack:dev:logs
 ```
 
 If nginx returns `502`, first check whether backend is healthy:
