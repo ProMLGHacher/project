@@ -24,9 +24,9 @@
   --ring: oklch(53% 0.18 262);
   --accent: oklch(90.8% 0.03 250);
   --accent-foreground: oklch(30% 0.05 255);
-  --hero-start: oklch(98% 0.02 244);
-  --hero-end: oklch(93.4% 0.05 261);
-  --spotlight: oklch(82% 0.12 239 / 0.22);
+  --hero-start: oklch(96.9% 0.01 250);
+  --hero-end: oklch(96.1% 0.012 250);
+  --spotlight: oklch(78% 0.08 236 / 0.1);
 }
 
 .dark {
@@ -52,9 +52,9 @@
   --ring: oklch(73% 0.15 256);
   --accent: oklch(31.5% 0.024 258);
   --accent-foreground: oklch(93.8% 0.008 255);
-  --hero-start: oklch(24% 0.03 248);
-  --hero-end: oklch(19% 0.04 265);
-  --spotlight: oklch(72% 0.11 238 / 0.18);
+  --hero-start: oklch(16.8% 0.012 258);
+  --hero-end: oklch(18.2% 0.014 258);
+  --spotlight: oklch(70% 0.08 236 / 0.08);
 }
 
 @theme inline {
@@ -109,13 +109,6 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, var(--spotlight), transparent 28%),
-    radial-gradient(
-      circle at top right,
-      oklch(from var(--spotlight) l c h / 0.55),
-      transparent 24%
-    ),
-    linear-gradient(180deg, var(--hero-start), var(--background) 24%, var(--background));
+  background: linear-gradient(180deg, var(--hero-start), var(--hero-end) 12rem, var(--background));
   color: var(--foreground);
 }

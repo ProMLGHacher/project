@@ -4,15 +4,11 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { HomeViewModel } from '../view_model/HomeViewModel'
 import {
-  Badge,
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardContent,
-  Alert,
-  AlertDescription,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Field,
   FieldHint,
   Input,
@@ -39,67 +35,53 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   })
 
   return (
-    <section className="mx-auto grid min-h-full w-full max-w-7xl items-start px-3 sm:px-4 md:px-6">
-      <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(22rem,0.8fr)] lg:items-stretch">
-        <Card className="relative overflow-hidden rounded-[calc(var(--radius-2xl)+0.5rem)] border-primary/10 bg-linear-to-br from-surface via-surface to-accent/35">
-          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-2/5 bg-radial from-primary/18 via-primary/7 to-transparent blur-2xl lg:block" />
-          <CardContent className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-6 lg:p-10">
-            <div className="max-w-2xl">
-              <Badge variant="info">{t('home.badge')}</Badge>
-              <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-surface-foreground sm:text-5xl lg:text-6xl">
-                {t('home.title')}
-              </h1>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                {t('home.description')}
-              </p>
+    <section className="mx-auto flex min-h-[calc(100vh-4.5rem)] w-full max-w-7xl items-center px-3 py-6 sm:px-4 md:px-6">
+      <div className="grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)] lg:gap-12">
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium text-info">{t('home.badge')}</p>
+          <h1 className="mt-4 text-4xl font-medium tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            {t('home.title')}
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+            {t('home.description')}
+          </p>
 
-              <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
-                <Button
-                  className="min-h-16 w-full rounded-3xl px-7 text-base shadow-lg shadow-primary/20 sm:w-auto sm:text-lg"
-                  disabled={!uiState.createRoomButtonState.enabled}
-                  onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
-                  type="button"
-                >
-                  {t('home.createRoom')}
-                </Button>
-                <div className="rounded-3xl border border-border/70 bg-surface-overlay px-4 py-3 text-sm text-muted-foreground backdrop-blur-sm sm:max-w-64">
-                  {t('home.createHint')}
-                </div>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button
+              className="min-h-12 rounded-full px-6 text-base"
+              disabled={!uiState.createRoomButtonState.enabled}
+              onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
+              type="button"
+            >
+              {t('home.createRoom')}
+            </Button>
+            <div className="flex items-center rounded-full border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
+              {t('home.createHint')}
+            </div>
+          </div>
+        </div>
+
+        <Card className="rounded-4xl border-border bg-surface shadow-sm">
+          <CardContent className="p-5 sm:p-6">
+            <div className="grid gap-5">
+              <div>
+                <h2 className="text-2xl font-medium text-foreground">{t('home.joinTitle')}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {t('home.joinDescription')}
+                </p>
               </div>
-            </div>
 
-            <div className="grid gap-3 self-end">
-              <HeroMetric
-                label={t('home.metrics.audioLabel')}
-                value={t('home.metrics.audioValue')}
-              />
-              <HeroMetric
-                label={t('home.metrics.videoLabel')}
-                value={t('home.metrics.videoValue')}
-              />
-              <HeroMetric label={t('home.metrics.flowLabel')} value={t('home.metrics.flowValue')} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[calc(var(--radius-2xl)+0.5rem)]">
-          <CardHeader className="border-b-0 pb-0">
-            <CardTitle className="text-2xl">{t('home.joinTitle')}</CardTitle>
-            <CardDescription>{t('home.joinDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-5">
-            <Field className="gap-4">
               {uiState.feedback && (
                 <Alert variant="warning">
                   <AlertDescription>{t(uiState.feedback)}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="rounded-3xl border border-border/70 bg-muted/35 p-3">
-                <InputGroup className="flex-col gap-3">
+              <Field className="gap-3">
+                <InputGroup className="flex-col gap-3 sm:flex-row">
                   <Input
                     aria-invalid={uiState.idOrLinkToJoinState.showError}
-                    className="min-h-13"
+                    className="min-h-12 flex-1 rounded-full px-5"
                     placeholder={t('home.roomInputPlaceholder')}
                     type="text"
                     value={uiState.idOrLinkToJoinState.value}
@@ -116,42 +98,28 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
                     }}
                   />
                   <Button
-                    className="w-full"
+                    className="min-h-12 rounded-full px-6"
                     disabled={!uiState.joinButtonState.enabled || uiState.joinButtonState.loading}
                     onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
-                    size="lg"
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                   >
                     {uiState.joinButtonState.loading ? t('home.checking') : t('home.continue')}
                   </Button>
                 </InputGroup>
-              </div>
 
-              {uiState.idOrLinkToJoinState.showError ? (
-                <FieldHint className="text-destructive">
-                  {uiState.idOrLinkToJoinState.error ? t(uiState.idOrLinkToJoinState.error) : ''}
-                </FieldHint>
-              ) : (
-                <FieldHint>{t('home.directJoinHint')}</FieldHint>
-              )}
-            </Field>
+                {uiState.idOrLinkToJoinState.showError ? (
+                  <FieldHint className="text-destructive">
+                    {uiState.idOrLinkToJoinState.error ? t(uiState.idOrLinkToJoinState.error) : ''}
+                  </FieldHint>
+                ) : (
+                  <FieldHint>{t('home.directJoinHint')}</FieldHint>
+                )}
+              </Field>
+            </div>
           </CardContent>
         </Card>
       </div>
     </section>
-  )
-}
-
-function HeroMetric({ label, value }: { readonly label: string; readonly value: string }) {
-  return (
-    <div className="rounded-3xl border border-border/70 bg-surface-overlay p-4 backdrop-blur-sm">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 font-display text-lg font-black tracking-tight text-surface-foreground">
-        {value}
-      </p>
-    </div>
   )
 }

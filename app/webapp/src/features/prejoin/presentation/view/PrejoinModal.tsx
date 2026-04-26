@@ -67,70 +67,85 @@ export function PrejoinModal({
 
   return (
     <Dialog
-      className="max-h-[calc(100dvh-1rem)] max-w-5xl overflow-hidden rounded-4xl p-0"
+      className="max-h-[calc(100dvh-1rem)] max-w-6xl overflow-hidden rounded-4xl p-0"
       open={open}
     >
-      <div className="grid max-h-[calc(100dvh-1rem)] min-h-[32rem] overflow-hidden lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)]">
-        <section className="relative bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 p-4 sm:p-5 md:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Badge variant="info">{t('prejoin.badge')}</Badge>
-            <Badge className="max-w-full truncate bg-white/10 text-white" variant="secondary">
-              {uiState.roomId}
-            </Badge>
+      <div className="grid min-h-[36rem] max-h-[calc(100dvh-1rem)] overflow-hidden lg:grid-cols-[minmax(0,1.15fr)_24rem]">
+        <section className="flex min-h-0 flex-col bg-background">
+          <div className="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-4 sm:px-6">
+            <div className="min-w-0">
+              <p className="text-lg font-medium text-foreground">{t('prejoin.title')}</p>
+              <p className="truncate text-sm text-muted-foreground">{t('prejoin.description')}</p>
+            </div>
+            <Badge variant="default">{uiState.roomId}</Badge>
           </div>
 
-          <div className="mt-4 grid h-full content-start gap-4 lg:mt-6">
-            <div className="overflow-hidden rounded-[calc(var(--radius-2xl)+0.25rem)] border border-white/10 bg-slate-950/60 shadow-2xl shadow-slate-950/40">
-              {uiState.cameraEnabled ? (
-                <VideoAspectRatio
-                  ref={previewRef}
-                  aria-label={t('prejoin.cameraPreview')}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="aspect-[4/5] min-h-72 rounded-none object-cover sm:aspect-video lg:aspect-[4/5] lg:min-h-[34rem]"
-                />
-              ) : (
-                <div className="grid aspect-[4/5] min-h-72 place-items-center p-8 text-center text-slate-200 sm:aspect-video lg:aspect-[4/5] lg:min-h-[34rem]">
-                  <div>
-                    <div className="mx-auto grid size-20 place-items-center rounded-full bg-white/10 text-3xl font-black">
-                      {uiState.displayName.value.trim().slice(0, 1).toUpperCase() || 'K'}
+          <div className="grid min-h-0 flex-1 items-center gap-6 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid gap-4">
+              <div className="overflow-hidden rounded-4xl bg-slate-950 shadow-lg">
+                {uiState.cameraEnabled ? (
+                  <VideoAspectRatio
+                    ref={previewRef}
+                    aria-label={t('prejoin.cameraPreview')}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="aspect-[4/3] rounded-none object-cover"
+                  />
+                ) : (
+                  <div className="grid aspect-[4/3] place-items-center p-8 text-center text-white">
+                    <div>
+                      <div className="mx-auto grid size-24 place-items-center rounded-full bg-white/10 text-4xl font-medium">
+                        {uiState.displayName.value.trim().slice(0, 1).toUpperCase() || 'K'}
+                      </div>
+                      <p className="mt-5 text-sm text-slate-300">{t('prejoin.cameraOff')}</p>
                     </div>
-                    <p className="mt-5 max-w-56 text-sm leading-6 text-slate-300">
-                      {t('prejoin.cameraOff')}
-                    </p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatusChip
+                  enabled={uiState.micEnabled}
+                  label={t('prejoin.microphone')}
+                  value={uiState.micEnabled ? t('prejoin.micOn') : t('prejoin.micOff')}
+                />
+                <StatusChip
+                  enabled={uiState.cameraEnabled}
+                  label={t('prejoin.camera')}
+                  value={
+                    uiState.cameraEnabled ? t('prejoin.cameraOn') : t('prejoin.cameraOffShort')
+                  }
+                />
+              </div>
             </div>
 
-            <div className="hidden gap-3 lg:grid">
-              <PreviewPill
+            <div className="grid gap-3">
+              <QuickToggleCard
+                checked={uiState.micEnabled}
                 description={uiState.micEnabled ? t('prejoin.micOn') : t('prejoin.micOff')}
                 label={t('prejoin.microphone')}
+                onChange={(enabled) => viewModel.onEvent({ type: 'microphone-toggled', enabled })}
               />
-              <PreviewPill
+              <QuickToggleCard
+                checked={uiState.cameraEnabled}
                 description={
                   uiState.cameraEnabled ? t('prejoin.cameraOn') : t('prejoin.cameraOffShort')
                 }
                 label={t('prejoin.camera')}
+                onChange={(enabled) => viewModel.onEvent({ type: 'camera-toggled', enabled })}
               />
             </div>
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col bg-surface">
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 md:p-6">
-            <DialogHeader>
-              <h2 className="font-display text-2xl font-black tracking-tight sm:text-3xl">
-                {t('prejoin.title')}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {t('prejoin.description')}
-              </p>
+        <section className="flex min-h-0 flex-col border-l border-border/80 bg-surface">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <DialogHeader className="mb-5">
+              <p className="text-xl font-medium text-foreground">{t('prejoin.badge')}</p>
             </DialogHeader>
 
-            <div className="grid gap-4 sm:gap-5">
+            <div className="grid gap-4">
               {uiState.error && (
                 <Alert>
                   <AlertDescription>{t(uiState.error)}</AlertDescription>
@@ -142,7 +157,7 @@ export function PrejoinModal({
                 <Input
                   id="display-name"
                   autoFocus
-                  className="min-h-13"
+                  className="min-h-12 rounded-3xl px-4"
                   placeholder={t('prejoin.namePlaceholder')}
                   value={uiState.displayName.value}
                   onChange={(event) =>
@@ -156,79 +171,57 @@ export function PrejoinModal({
                 )}
               </Field>
 
-              <Card className="rounded-[calc(var(--radius-2xl)+0.25rem)] border-border/70">
-                <CardContent className="grid gap-4 p-4">
-                  <MediaToggle
-                    checked={uiState.micEnabled}
-                    label={t('prejoin.microphone')}
-                    description={uiState.micEnabled ? t('prejoin.micOn') : t('prejoin.micOff')}
-                    onChange={(enabled) =>
-                      viewModel.onEvent({ type: 'microphone-toggled', enabled })
-                    }
-                  />
-                  <MediaToggle
-                    checked={uiState.cameraEnabled}
-                    label={t('prejoin.camera')}
-                    description={
-                      uiState.cameraEnabled ? t('prejoin.cameraOn') : t('prejoin.cameraOffShort')
-                    }
-                    onChange={(enabled) => viewModel.onEvent({ type: 'camera-toggled', enabled })}
-                  />
-                </CardContent>
-              </Card>
+              <Field>
+                <Label htmlFor="microphone">{t('prejoin.microphone')}</Label>
+                <NativeSelect
+                  id="microphone"
+                  className="min-h-12 rounded-3xl px-4"
+                  value={uiState.selectedMicrophoneId ?? ''}
+                  onChange={(event) =>
+                    viewModel.onEvent({
+                      type: 'microphone-selected',
+                      deviceId: event.target.value || null
+                    })
+                  }
+                >
+                  <option value="">{t('prejoin.defaultDevice')}</option>
+                  {microphones.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
 
-              <div className="grid gap-4">
-                <Field>
-                  <Label htmlFor="microphone">{t('prejoin.microphone')}</Label>
-                  <NativeSelect
-                    id="microphone"
-                    value={uiState.selectedMicrophoneId ?? ''}
-                    onChange={(event) =>
-                      viewModel.onEvent({
-                        type: 'microphone-selected',
-                        deviceId: event.target.value || null
-                      })
-                    }
-                  >
-                    <option value="">{t('prejoin.defaultDevice')}</option>
-                    {microphones.map((device) => (
-                      <option key={device.id} value={device.id}>
-                        {device.label}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </Field>
-
-                <Field>
-                  <Label htmlFor="camera">{t('prejoin.camera')}</Label>
-                  <NativeSelect
-                    id="camera"
-                    value={uiState.selectedCameraId ?? ''}
-                    onChange={(event) =>
-                      viewModel.onEvent({
-                        type: 'camera-selected',
-                        deviceId: event.target.value || null
-                      })
-                    }
-                  >
-                    <option value="">{t('prejoin.defaultDevice')}</option>
-                    {cameras.map((device) => (
-                      <option key={device.id} value={device.id}>
-                        {device.label}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </Field>
-              </div>
+              <Field>
+                <Label htmlFor="camera">{t('prejoin.camera')}</Label>
+                <NativeSelect
+                  id="camera"
+                  className="min-h-12 rounded-3xl px-4"
+                  value={uiState.selectedCameraId ?? ''}
+                  onChange={(event) =>
+                    viewModel.onEvent({
+                      type: 'camera-selected',
+                      deviceId: event.target.value || null
+                    })
+                  }
+                >
+                  <option value="">{t('prejoin.defaultDevice')}</option>
+                  {cameras.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
             </div>
           </div>
 
-          <DialogFooter className="border-t border-border/80 bg-surface-overlay p-4 backdrop-blur-sm sm:p-5">
+          <DialogFooter className="border-t border-border/80 bg-surface px-4 py-4 sm:px-5">
             <Button
-              className="w-full rounded-3xl"
+              className="w-full min-h-12 rounded-full"
               disabled={!uiState.joinButton.enabled || uiState.joinButton.loading}
               onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
-              size="lg"
               type="button"
             >
               {uiState.joinButton.loading ? t('prejoin.joining') : t('prejoin.joinRoom')}
@@ -240,36 +233,52 @@ export function PrejoinModal({
   )
 }
 
-interface MediaToggleProps {
+function QuickToggleCard({
+  checked,
+  label,
+  description,
+  onChange
+}: {
   readonly checked: boolean
   readonly label: string
   readonly description: string
   readonly onChange: (checked: boolean) => void
-}
-
-function MediaToggle({ checked, label, description, onChange }: MediaToggleProps) {
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-sm font-bold text-surface-foreground">{label}</p>
-        <p className="text-xs leading-5 text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </div>
+    <Card className="rounded-4xl border-border/80">
+      <CardContent className="flex items-center justify-between gap-4 p-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <Switch checked={checked} onCheckedChange={onChange} />
+      </CardContent>
+    </Card>
   )
 }
 
-function PreviewPill({
+function StatusChip({
+  enabled,
   label,
-  description
+  value
 }: {
+  readonly enabled: boolean
   readonly label: string
-  readonly description: string
+  readonly value: string
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white backdrop-blur-sm">
-      <p className="font-bold">{label}</p>
-      <p className="mt-1 text-xs text-white/70">{description}</p>
+    <div className="flex items-center gap-3 rounded-full border border-border/80 bg-surface px-4 py-3">
+      <span
+        className={
+          enabled
+            ? 'inline-flex size-2 rounded-full bg-success'
+            : 'inline-flex size-2 rounded-full bg-muted-foreground'
+        }
+      />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="truncate text-xs text-muted-foreground">{value}</p>
+      </div>
     </div>
   )
 }
