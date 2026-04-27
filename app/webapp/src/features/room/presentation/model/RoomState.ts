@@ -7,6 +7,7 @@ import type { PrefixedTranslationKey } from '@core/i18n/translation-key'
 export type RoomStatusMessageKey = PrefixedTranslationKey<'voice', 'room.status'>
 export type RoomToastMessageKey = PrefixedTranslationKey<'voice', 'room.toasts'>
 export type RoomErrorMessageKey = PrefixedTranslationKey<'voice', 'room.errors'>
+export type RoomPanel = 'participants' | 'roomInfo' | 'techInfo'
 
 export type RoomUiState = {
   readonly roomId: string
@@ -24,7 +25,10 @@ export type RoomUiState = {
   readonly actionStatus: RoomStatusMessageKey
   readonly error: RoomUiError | null
   readonly diagnostics: ConferenceDiagnostics | null
-  readonly technicalInfoVisible: boolean
+  readonly activePanel: RoomPanel | null
+  readonly pinnedTileId: string | null
+  readonly settingsOpen: boolean
+  readonly speakingParticipantIds: readonly string[]
 }
 
 export type RoomUiAction =
@@ -38,7 +42,11 @@ export type RoomUiAction =
   | { readonly type: 'export-logs-pressed' }
   | { readonly type: 'clear-logs-pressed' }
   | { readonly type: 'leave-pressed' }
-  | { readonly type: 'technical-info-toggled'; readonly visible: boolean }
+  | { readonly type: 'panel-toggled'; readonly panel: RoomPanel }
+  | { readonly type: 'panel-closed' }
+  | { readonly type: 'tile-pin-toggled'; readonly tileId: string }
+  | { readonly type: 'settings-opened' }
+  | { readonly type: 'settings-closed' }
 
 export type RoomUiEffect =
   | { readonly type: 'navigate-home' }
@@ -67,5 +75,8 @@ export const initialRoomState: RoomUiState = {
   actionStatus: 'room.status.chooseSettings',
   error: null,
   diagnostics: null,
-  technicalInfoVisible: false
+  activePanel: null,
+  pinnedTileId: null,
+  settingsOpen: false,
+  speakingParticipantIds: []
 }

@@ -1,25 +1,25 @@
 export default {
   home: {
-    badge: 'Голосовые комнаты',
-    title: 'Создайте комнату, когда разговор уже нужен.',
+    badge: 'KVT rooms',
+    title: 'KVT rooms — чаты и видеозвонки',
     description:
-      'Откройте конференцию, отправьте ссылку и дайте участникам войти с заранее выбранными микрофоном и камерой.',
-    createRoom: 'Создать комнату',
-    createHint: 'Микрофон и камеру можно настроить перед входом.',
+      'Создайте комнату, отправьте ссылку и войдите в разговор с понятным prejoin, мягкими уведомлениями и фокусом на людях.',
+    createRoom: 'Создать видеовстречу',
+    createHint: 'Перед входом можно спокойно проверить имя, камеру и микрофон.',
     metrics: {
-      audioLabel: 'Аудио',
-      audioValue: 'Минимальная задержка',
+      audioLabel: 'Звук',
+      audioValue: 'События слышно сразу',
       videoLabel: 'Видео',
-      videoValue: 'Бесшовное включение',
+      videoValue: 'Плитки подстраиваются сами',
       flowLabel: 'Вход',
-      flowValue: 'Подключение в одно касание'
+      flowValue: 'Ссылка открывает комнату'
     },
-    joinTitle: 'Войти в комнату',
-    joinDescription: 'Вставьте id комнаты или полную ссылку.',
+    joinTitle: 'Подключиться',
+    joinDescription: 'Вставьте id комнаты или ссылку приглашения.',
     roomInputPlaceholder: 'clear-river-42',
     continue: 'Продолжить',
     checking: 'Проверяем...',
-    directJoinHint: 'Отдельной страницы входа нет: комната откроется сразу.',
+    directJoinHint: 'Если комната существует, сразу откроем экран входа.',
     errors: {
       roomInputRequired: 'Введите id комнаты или ссылку',
       invalidRoom: 'Введите корректный id комнаты или ссылку',
@@ -69,6 +69,7 @@ export default {
   room: {
     header: {
       title: 'Комната {{roomId}}',
+      untitled: 'Комната',
       participants: '{{count}} участника',
       participants_one: '{{count}} участник',
       participants_few: '{{count}} участника',
@@ -78,6 +79,18 @@ export default {
       voiceMode: 'Голос в приоритете',
       copyLink: 'Скопировать ссылку',
       leave: 'Выйти'
+    },
+    panels: {
+      participants: 'Участники',
+      roomInfo: 'Информация о комнате',
+      techInfo: 'Тех. инфо',
+      settings: 'Настройки',
+      close: 'Закрыть'
+    },
+    info: {
+      roomId: 'ID комнаты',
+      status: 'Статус',
+      participants: 'Участники'
     },
     empty: {
       title: 'Комната ожидает участников.',

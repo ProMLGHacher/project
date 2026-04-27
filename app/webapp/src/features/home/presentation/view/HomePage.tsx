@@ -12,7 +12,6 @@ import {
   Field,
   FieldHint,
   Input,
-  InputGroup,
   useToast
 } from '@core/design-system'
 
@@ -35,40 +34,36 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   })
 
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-4.5rem)] w-full max-w-7xl items-center px-3 py-6 sm:px-4 md:px-6">
-      <div className="grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)] lg:gap-12">
-        <div className="max-w-2xl">
-          <p className="text-sm font-medium text-info">{t('home.badge')}</p>
-          <h1 className="mt-4 text-4xl font-medium tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            {t('home.title')}
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
-            {t('home.description')}
-          </p>
+    <section className="mx-auto grid min-h-screen w-full max-w-5xl place-items-center px-4 py-10">
+      <div className="w-full">
+        <h1 className="text-center text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          {t('home.title')}
+        </h1>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Button
-              className="min-h-12 rounded-full px-6 text-base"
-              disabled={!uiState.createRoomButtonState.enabled}
-              onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
-              type="button"
-            >
-              {t('home.createRoom')}
-            </Button>
-            <div className="flex items-center rounded-full border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
-              {t('home.createHint')}
+        <div className="mt-10 grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.9fr)]">
+          <button
+            className="group grid min-h-[22rem] place-items-center rounded-[2rem] border border-border/70 bg-surface text-center shadow-xl shadow-black/8 transition hover:-translate-y-0.5 hover:bg-surface-elevated hover:shadow-2xl disabled:pointer-events-none disabled:opacity-50 md:min-h-[26rem]"
+            disabled={!uiState.createRoomButtonState.enabled}
+            onClick={() => viewModel.onEvent({ type: 'create-room-pressed' })}
+            type="button"
+          >
+            <div>
+              <div className="mx-auto grid size-24 place-items-center rounded-[2rem] bg-background text-foreground transition group-hover:scale-105">
+                <CreateMeetingIcon />
+              </div>
+              <p className="mt-6 text-xl font-semibold text-foreground">{t('home.createRoom')}</p>
             </div>
-          </div>
-        </div>
+          </button>
 
-        <Card className="rounded-4xl border-border bg-surface shadow-sm">
-          <CardContent className="p-5 sm:p-6">
-            <div className="grid gap-5">
-              <div>
-                <h2 className="text-2xl font-medium text-foreground">{t('home.joinTitle')}</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {t('home.joinDescription')}
-                </p>
+          <Card className="rounded-[2rem] border-border/70 bg-surface shadow-xl shadow-black/8">
+            <CardContent className="grid h-full content-center gap-5 p-5 sm:p-6">
+              <div className="text-center">
+                <div className="mx-auto grid size-20 place-items-center rounded-[1.5rem] bg-background text-foreground">
+                  <JoinIcon />
+                </div>
+                <h2 className="mt-5 text-xl font-semibold text-foreground">
+                  {t('home.joinTitle')}
+                </h2>
               </div>
 
               {uiState.feedback && (
@@ -78,48 +73,75 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
               )}
 
               <Field className="gap-3">
-                <InputGroup className="flex-col gap-3 sm:flex-row">
-                  <Input
-                    aria-invalid={uiState.idOrLinkToJoinState.showError}
-                    className="min-h-12 flex-1 rounded-full px-5"
-                    placeholder={t('home.roomInputPlaceholder')}
-                    type="text"
-                    value={uiState.idOrLinkToJoinState.value}
-                    onChange={(event) =>
-                      viewModel.onEvent({
-                        type: 'id-or-link-to-join-changed',
-                        value: event.target.value
-                      })
+                <Input
+                  aria-invalid={uiState.idOrLinkToJoinState.showError}
+                  className="min-h-12 rounded-2xl bg-background px-5 text-center"
+                  placeholder={t('home.roomInputPlaceholder')}
+                  type="text"
+                  value={uiState.idOrLinkToJoinState.value}
+                  onChange={(event) =>
+                    viewModel.onEvent({
+                      type: 'id-or-link-to-join-changed',
+                      value: event.target.value
+                    })
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      viewModel.onEvent({ type: 'join-pressed' })
                     }
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        viewModel.onEvent({ type: 'join-pressed' })
-                      }
-                    }}
-                  />
-                  <Button
-                    className="min-h-12 rounded-full px-6"
-                    disabled={!uiState.joinButtonState.enabled || uiState.joinButtonState.loading}
-                    onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
-                    type="button"
-                    variant="outline"
-                  >
-                    {uiState.joinButtonState.loading ? t('home.checking') : t('home.continue')}
-                  </Button>
-                </InputGroup>
+                  }}
+                />
+                <Button
+                  className="min-h-12 rounded-2xl px-6"
+                  disabled={!uiState.joinButtonState.enabled || uiState.joinButtonState.loading}
+                  onClick={() => viewModel.onEvent({ type: 'join-pressed' })}
+                  type="button"
+                >
+                  {uiState.joinButtonState.loading ? t('home.checking') : t('home.continue')}
+                </Button>
 
                 {uiState.idOrLinkToJoinState.showError ? (
                   <FieldHint className="text-destructive">
                     {uiState.idOrLinkToJoinState.error ? t(uiState.idOrLinkToJoinState.error) : ''}
                   </FieldHint>
                 ) : (
-                  <FieldHint>{t('home.directJoinHint')}</FieldHint>
+                  <FieldHint className="text-center">{t('home.directJoinHint')}</FieldHint>
                 )}
               </Field>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </section>
+  )
+}
+
+function CreateMeetingIcon() {
+  return (
+    <svg aria-hidden="true" className="size-14" fill="none" viewBox="0 0 64 64">
+      <path
+        d="M16 20h25a9 9 0 0 1 9 9v3a9 9 0 0 1-9 9h-8l-9 8v-8h-8a9 9 0 0 1-9-9v-3a9 9 0 0 1 9-9Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="3"
+      />
+      <path d="M43 31h.1" stroke="#58E66B" strokeLinecap="round" strokeWidth="7" />
+      <circle cx="24" cy="31" r="8" stroke="currentColor" strokeWidth="3" />
+    </svg>
+  )
+}
+
+function JoinIcon() {
+  return (
+    <svg aria-hidden="true" className="size-12" fill="none" viewBox="0 0 64 64">
+      <circle cx="24" cy="24" r="8" stroke="currentColor" strokeWidth="3" />
+      <circle cx="43" cy="25" r="7" stroke="currentColor" strokeWidth="3" />
+      <path
+        d="M10 49c2.6-8 9.4-12 14-12s11.4 4 14 12M34 40c3-2.3 6-3 9-3 4 0 9 3.4 11 10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="3"
+      />
+    </svg>
   )
 }

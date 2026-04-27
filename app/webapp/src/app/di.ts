@@ -53,6 +53,11 @@ import { SaveDefaultMicEnabledUseCase } from '@capabilities/user-preferences/dom
 import { SaveDisplayNameUseCase } from '@capabilities/user-preferences/domain/usecases/SaveDisplayNameUseCase'
 import { SavePreferredCameraUseCase } from '@capabilities/user-preferences/domain/usecases/SavePreferredCameraUseCase'
 import { SavePreferredMicrophoneUseCase } from '@capabilities/user-preferences/domain/usecases/SavePreferredMicrophoneUseCase'
+import { BrowserVoiceActivityRepository } from '@capabilities/voice-activity/data/repository/BrowserVoiceActivityRepository'
+import { voiceActivityRepositoryToken } from '@capabilities/voice-activity/domain/repository/tokens'
+import { ObserveVoiceActivityUseCase } from '@capabilities/voice-activity/domain/usecases/ObserveVoiceActivityUseCase'
+import { StopVoiceActivityUseCase } from '@capabilities/voice-activity/domain/usecases/StopVoiceActivityUseCase'
+import { UpdateVoiceActivitySourcesUseCase } from '@capabilities/voice-activity/domain/usecases/UpdateVoiceActivitySourcesUseCase'
 import { CreateRoomFlowUseCase } from '@features/home/domain/usecases/CreateRoomFlowUseCase'
 import { JoinRoomFlowUseCase as HomeJoinRoomFlowUseCase } from '@features/home/domain/usecases/JoinRoomFlowUseCase'
 import { ValidateRoomIdInputUseCase } from '@features/home/domain/usecases/ValidateRoomIdInputUseCase'
@@ -76,6 +81,7 @@ import { ToggleRoomCameraUseCase } from '@features/room/domain/usecases/ToggleRo
 import { ToggleRoomMicrophoneUseCase } from '@features/room/domain/usecases/ToggleRoomMicrophoneUseCase'
 import { ToggleRoomScreenShareUseCase } from '@features/room/domain/usecases/ToggleRoomScreenShareUseCase'
 import { RoomViewModel } from '@features/room/presentation/view_model/RoomViewModel'
+import { SettingsViewModel } from '@features/settings/presentation/view_model/SettingsViewModel'
 import type { ClipboardRepository } from '@capabilities/clipboard/domain/repository/ClipboardRepository'
 import type { ClientLogRepository } from '@capabilities/client-logs/domain/repository/ClientLogRepository'
 import type { ConferenceAudioRepository } from '@capabilities/conference-audio/domain/repository/ConferenceAudioRepository'
@@ -85,6 +91,7 @@ import type { RtcRepository } from '@capabilities/rtc/domain/repository/RtcRepos
 import type { SignalingRepository } from '@capabilities/rtc/domain/repository/SignalingRepository'
 import type { JoinSessionRepository } from '@capabilities/session/domain/repository/JoinSessionRepository'
 import type { UserSettingsRepository } from '@capabilities/user-preferences/domain/repository/UserSettingsRepository'
+import type { VoiceActivityRepository } from '@capabilities/voice-activity/domain/repository/VoiceActivityRepository'
 import type { RoomRepository } from '@features/room/domain/repository/RoomRepository'
 import { SetCameraEnabledUseCase } from '@capabilities/media/domain/usecases/SetCameraEnabledUseCase'
 import { SetMicrophoneEnabledUseCase } from '@capabilities/media/domain/usecases/SetMicrophoneEnabledUseCase'
@@ -151,6 +158,12 @@ class VoiceModule {
   @Singleton({ lazy: true })
   static provideConferenceAudioRepository(): ConferenceAudioRepository {
     return new BrowserConferenceAudioRepository()
+  }
+
+  @Provides(voiceActivityRepositoryToken)
+  @Singleton({ lazy: true })
+  static provideVoiceActivityRepository(): VoiceActivityRepository {
+    return new BrowserVoiceActivityRepository()
   }
 
   @Provides(CreateRoomUseCase)
@@ -439,6 +452,27 @@ class VoiceModule {
     return new PlayConferenceSoundUseCase(repository)
   }
 
+  @Provides(ObserveVoiceActivityUseCase)
+  static provideObserveVoiceActivityUseCase(
+    @Inject(voiceActivityRepositoryToken) repository: VoiceActivityRepository
+  ) {
+    return new ObserveVoiceActivityUseCase(repository)
+  }
+
+  @Provides(UpdateVoiceActivitySourcesUseCase)
+  static provideUpdateVoiceActivitySourcesUseCase(
+    @Inject(voiceActivityRepositoryToken) repository: VoiceActivityRepository
+  ) {
+    return new UpdateVoiceActivitySourcesUseCase(repository)
+  }
+
+  @Provides(StopVoiceActivityUseCase)
+  static provideStopVoiceActivityUseCase(
+    @Inject(voiceActivityRepositoryToken) repository: VoiceActivityRepository
+  ) {
+    return new StopVoiceActivityUseCase(repository)
+  }
+
   @Provides(BuildRoomLinkUseCase)
   static provideBuildRoomLinkUseCase() {
     return new BuildRoomLinkUseCase()
@@ -518,7 +552,11 @@ class VoiceModule {
     @Inject(ClearClientLogsUseCase) clearLogs: ClearClientLogsUseCase,
     @Inject(ClearJoinSessionUseCase) clearSession: ClearJoinSessionUseCase,
     @Inject(LeaveRoomUseCase) leaveRoom: LeaveRoomUseCase,
-    @Inject(PlayConferenceSoundUseCase) playConferenceSound: PlayConferenceSoundUseCase
+    @Inject(PlayConferenceSoundUseCase) playConferenceSound: PlayConferenceSoundUseCase,
+    @Inject(ObserveVoiceActivityUseCase) observeVoiceActivity: ObserveVoiceActivityUseCase,
+    @Inject(UpdateVoiceActivitySourcesUseCase)
+    updateVoiceActivitySources: UpdateVoiceActivitySourcesUseCase,
+    @Inject(StopVoiceActivityUseCase) stopVoiceActivity: StopVoiceActivityUseCase
   ) {
     return new RoomViewModel(
       loadSession,
@@ -534,7 +572,42 @@ class VoiceModule {
       clearLogs,
       clearSession,
       leaveRoom,
-      playConferenceSound
+      playConferenceSound,
+      observeVoiceActivity,
+      updateVoiceActivitySources,
+      stopVoiceActivity
+    )
+  }
+
+  @Provides(SettingsViewModel)
+  @ViewModelProvider()
+  static provideSettingsViewModel(
+    @Inject(GetUserPreferencesUseCase) getPreferences: GetUserPreferencesUseCase,
+    @Inject(ListMediaDevicesUseCase) listDevices: ListMediaDevicesUseCase,
+    @Inject(ObserveLocalMediaUseCase) observeMedia: ObserveLocalMediaUseCase,
+    @Inject(StartLocalPreviewUseCase) startPreview: StartLocalPreviewUseCase,
+    @Inject(StopLocalPreviewUseCase) stopPreview: StopLocalPreviewUseCase,
+    @Inject(SetMicrophoneEnabledUseCase) setMicrophoneEnabled: SetMicrophoneEnabledUseCase,
+    @Inject(SetCameraEnabledUseCase) setCameraEnabled: SetCameraEnabledUseCase,
+    @Inject(SaveDisplayNameUseCase) saveDisplayName: SaveDisplayNameUseCase,
+    @Inject(SaveDefaultMicEnabledUseCase) saveDefaultMic: SaveDefaultMicEnabledUseCase,
+    @Inject(SaveDefaultCameraEnabledUseCase) saveDefaultCamera: SaveDefaultCameraEnabledUseCase,
+    @Inject(SavePreferredMicrophoneUseCase) saveMicrophone: SavePreferredMicrophoneUseCase,
+    @Inject(SavePreferredCameraUseCase) saveCamera: SavePreferredCameraUseCase
+  ) {
+    return new SettingsViewModel(
+      getPreferences,
+      listDevices,
+      observeMedia,
+      startPreview,
+      stopPreview,
+      setMicrophoneEnabled,
+      setCameraEnabled,
+      saveDisplayName,
+      saveDefaultMic,
+      saveDefaultCamera,
+      saveMicrophone,
+      saveCamera
     )
   }
 }

@@ -1,55 +1,36 @@
-import { KvtLink, KvtOutlet } from '@kvt/react'
-import { useKvtTheme } from '@kvt/theme'
+import { useState } from 'react'
+import { KvtOutlet } from '@kvt/react'
 import { useTranslation } from 'react-i18next'
-import { Badge, Button, Card, CardContent, NativeSelect } from '@core/design-system'
-import { setLanguage, supportedLanguages, type SupportedLanguage } from '@core/i18n/config'
+import { useLocation } from 'react-router'
+import { Button, Card, CardContent } from '@core/design-system'
+import { SettingsIcon, SettingsModal } from '@features/settings/presentation/view/SettingsModal'
 
 export function AppLayout() {
-  const { t, i18n } = useTranslation('common')
-  const { resolvedMode, toggleMode } = useKvtTheme()
+  const { t } = useTranslation('common')
+  const location = useLocation()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const roomChromeOwnsSettings = location.pathname.startsWith('/rooms/')
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/80 bg-surface">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4 md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-info text-sm font-black text-on-feedback">
-              K
-            </div>
-            <div className="min-w-0">
-              <KvtLink className="block truncate text-base font-semibold text-foreground" to="/">
-                {t('nav.brand')}
-              </KvtLink>
-              <p className="truncate text-xs text-muted-foreground">{t('nav.tagline')}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge className="hidden md:inline-flex" variant="default">
-              {resolvedMode === 'dark' ? t('nav.themeMode.dark') : t('nav.themeMode.light')}
-            </Badge>
-            <NativeSelect
-              aria-label={t('nav.language')}
-              className="w-20"
-              value={i18n.language}
-              onChange={(event) => void setLanguage(event.target.value as SupportedLanguage)}
-            >
-              {supportedLanguages.map((language) => (
-                <option key={language} value={language}>
-                  {language.toUpperCase()}
-                </option>
-              ))}
-            </NativeSelect>
-            <Button onClick={toggleMode} size="sm" type="button" variant="outline">
-              {t('nav.theme')}
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <div className="min-h-0">
         <KvtOutlet />
       </div>
+
+      {!roomChromeOwnsSettings && (
+        <Button
+          aria-label={t('settings.title')}
+          className="fixed bottom-4 right-4 z-30 size-12 rounded-full p-0 shadow-xl shadow-black/10"
+          onClick={() => setSettingsOpen(true)}
+          size="icon"
+          type="button"
+          variant="outline"
+        >
+          <SettingsIcon />
+        </Button>
+      )}
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   )
 }

@@ -1,10 +1,12 @@
 export type ConferenceSound =
+  | 'conference-joined'
   | 'microphone-on'
   | 'microphone-off'
   | 'camera-on'
   | 'camera-off'
   | 'screen-share-incoming'
   | 'screen-share-outgoing'
+  | 'screen-share-stopped-incoming'
+  | 'screen-share-stopped-outgoing'
   | 'participant-incoming'
   | 'participant-outgoing'
-

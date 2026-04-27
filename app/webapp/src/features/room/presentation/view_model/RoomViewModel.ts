@@ -2,6 +2,10 @@ import { CompositeDisposable, MutableSharedFlow, MutableStateFlow, ViewModel } f
 import type { Participant } from '@features/room/domain/model/Participant'
 import type { ConferenceSound } from '@capabilities/conference-audio/domain/model/ConferenceSound'
 import type { PlayConferenceSoundUseCase } from '@capabilities/conference-audio/domain/usecases/PlayConferenceSoundUseCase'
+import type { ObserveVoiceActivityUseCase } from '@capabilities/voice-activity/domain/usecases/ObserveVoiceActivityUseCase'
+import type { StopVoiceActivityUseCase } from '@capabilities/voice-activity/domain/usecases/StopVoiceActivityUseCase'
+import type { UpdateVoiceActivitySourcesUseCase } from '@capabilities/voice-activity/domain/usecases/UpdateVoiceActivitySourcesUseCase'
+import type { VoiceActivitySource } from '@capabilities/voice-activity/domain/model/VoiceActivitySource'
 import type { RtcDiagnostics, RtcSession } from '@capabilities/rtc/domain/model'
 import type { ConnectToRoomRtcUseCase } from '@capabilities/rtc/domain/usecases/ConnectToRoomRtcUseCase'
 import type { LoadJoinSessionUseCase } from '@capabilities/session/domain/usecases/LoadJoinSessionUseCase'
@@ -76,7 +80,10 @@ export class RoomViewModel extends ViewModel {
     private readonly clearClientLogsUseCase: ClearClientLogsUseCase,
     private readonly clearJoinSessionUseCase: ClearJoinSessionUseCase,
     private readonly leaveRoomUseCase: LeaveRoomUseCase,
-    private readonly playConferenceSoundUseCase: PlayConferenceSoundUseCase
+    private readonly playConferenceSoundUseCase: PlayConferenceSoundUseCase,
+    private readonly observeVoiceActivityUseCase: ObserveVoiceActivityUseCase,
+    private readonly updateVoiceActivitySourcesUseCase: UpdateVoiceActivitySourcesUseCase,
+    private readonly stopVoiceActivityUseCase: StopVoiceActivityUseCase
   ) {
     super()
   }
@@ -99,6 +106,15 @@ export class RoomViewModel extends ViewModel {
         this.latestDiagnostics = diagnostics
 
         this.updateState((state) => this.withDiagnostics(state, null))
+      })
+    )
+
+    disposables.add(
+      this.observeVoiceActivityUseCase.execute().subscribe((speakingParticipantIds) => {
+        this.updateState((state) => ({
+          ...state,
+          speakingParticipantIds
+        }))
       })
     )
 
@@ -137,8 +153,26 @@ export class RoomViewModel extends ViewModel {
       case 'leave-pressed':
         void this.leaveRoom()
         break
-      case 'technical-info-toggled':
-        this.updateState((state) => ({ ...state, technicalInfoVisible: event.visible }))
+      case 'panel-toggled':
+        this.updateState((state) => ({
+          ...state,
+          activePanel: state.activePanel === event.panel ? null : event.panel
+        }))
+        break
+      case 'panel-closed':
+        this.updateState((state) => ({ ...state, activePanel: null }))
+        break
+      case 'tile-pin-toggled':
+        this.updateState((state) => ({
+          ...state,
+          pinnedTileId: state.pinnedTileId === event.tileId ? null : event.tileId
+        }))
+        break
+      case 'settings-opened':
+        this.updateState((state) => ({ ...state, settingsOpen: true }))
+        break
+      case 'settings-closed':
+        this.updateState((state) => ({ ...state, settingsOpen: false }))
         break
       default:
         throw new Error(`Unknown event: ${JSON.stringify(event)}`)
@@ -167,6 +201,7 @@ export class RoomViewModel extends ViewModel {
     this.invalidateControlRequests()
     this.latestDiagnostics = null
     this.lastConferenceSoundParticipants = null
+    this.stopVoiceActivityUseCase.execute()
 
     this.updateState((state) => this.createOpeningRoomState(state, normalizedRoomId))
 
@@ -450,6 +485,8 @@ export class RoomViewModel extends ViewModel {
       },
       actionStatus: 'room.status.mediaStarting'
     }))
+
+    this.playConferenceSoundUseCase.execute('conference-joined')
   }
 
   private async leaveRoom() {
@@ -463,6 +500,7 @@ export class RoomViewModel extends ViewModel {
     this.lastConferenceSoundParticipants = null
 
     this.leaveRoomUseCase.execute()
+    this.stopVoiceActivityUseCase.execute()
     await this.clearJoinSessionUseCase.execute(roomId)
 
     this.effects.emit({ type: 'navigate-home' })
@@ -487,7 +525,13 @@ export class RoomViewModel extends ViewModel {
     }
 
     // Если RTC-сессия прислала новый snapshot, UI-контролы лучше синхронизировать с ним.
-    return this.withDiagnostics(this.syncControlsWithLocalParticipant(nextState), session)
+    const syncedState = this.withDiagnostics(
+      this.syncControlsWithLocalParticipant(nextState),
+      session
+    )
+    this.updateVoiceActivitySources(syncedState)
+
+    return syncedState
   }
 
   private playLocalControlSound(control: RoomControlKey, enabled: boolean) {
@@ -499,9 +543,9 @@ export class RoomViewModel extends ViewModel {
         this.playConferenceSoundUseCase.execute(enabled ? 'camera-on' : 'camera-off')
         break
       case 'screenShare':
-        if (enabled) {
-          this.playConferenceSoundUseCase.execute('screen-share-outgoing')
-        }
+        this.playConferenceSoundUseCase.execute(
+          enabled ? 'screen-share-outgoing' : 'screen-share-stopped-outgoing'
+        )
         break
     }
   }
@@ -564,6 +608,8 @@ export class RoomViewModel extends ViewModel {
 
     if (!wasScreenSharing && isScreenSharing) {
       this.playConferenceSoundUseCase.execute('screen-share-incoming')
+    } else if (wasScreenSharing && !isScreenSharing) {
+      this.playConferenceSoundUseCase.execute('screen-share-stopped-incoming')
     }
   }
 
@@ -580,6 +626,30 @@ export class RoomViewModel extends ViewModel {
     this.playConferenceSoundUseCase.execute(isEnabled ? enabledSound : disabledSound)
   }
 
+  private updateVoiceActivitySources(state: RoomUiState) {
+    if (!state.localParticipantId || state.prejoinOpen) {
+      this.stopVoiceActivityUseCase.execute()
+      return
+    }
+
+    const sources: VoiceActivitySource[] = []
+
+    for (const participant of state.participants) {
+      const mediaStreams =
+        participant.id === state.localParticipantId
+          ? state.localMediaStreams
+          : (state.remoteMediaStreams[participant.id] ?? {})
+
+      sources.push({
+        id: participant.id,
+        stream: mediaStreams.audio ?? null,
+        enabled: participantHasEnabledSlot(participant, 'audio')
+      })
+    }
+
+    this.updateVoiceActivitySourcesUseCase.execute(sources)
+  }
+
   private createOpeningRoomState(state: RoomUiState, roomId: string): RoomUiState {
     return {
       ...state,
@@ -593,6 +663,9 @@ export class RoomViewModel extends ViewModel {
       remoteStreams: {},
       remoteMediaStreams: {},
       error: null,
+      activePanel: null,
+      pinnedTileId: null,
+      speakingParticipantIds: [],
       actionStatus: 'room.status.checkingRoom',
       diagnostics: null,
       microphone: {

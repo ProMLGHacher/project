@@ -3,26 +3,26 @@ import { defineResource } from '../../translation-key'
 
 export default defineResource<typeof ruVoice>()({
   home: {
-    badge: 'Voice rooms',
-    title: 'Start a room when the conversation is ready.',
+    badge: 'KVT rooms',
+    title: 'KVT rooms — chats and video calls',
     description:
-      'Create a conference, share the link, and let people join with microphone and camera choices already prepared.',
-    createRoom: 'Create room',
-    createHint: 'You can adjust mic and camera before entering.',
+      'Create a room, send the link, and join with a clear prejoin flow, soft event feedback, and attention on people.',
+    createRoom: 'Create video meeting',
+    createHint: 'Before entering, you can calmly check your name, camera, and microphone.',
     metrics: {
-      audioLabel: 'Audio',
-      audioValue: 'Low latency',
+      audioLabel: 'Sound',
+      audioValue: 'Events are easy to notice',
       videoLabel: 'Video',
-      videoValue: 'Seamless toggle',
+      videoValue: 'Tiles adapt automatically',
       flowLabel: 'Flow',
-      flowValue: 'Join in one tap'
+      flowValue: 'Links open the room'
     },
-    joinTitle: 'Join a room',
-    joinDescription: 'Paste a room id or the full room link.',
+    joinTitle: 'Connect',
+    joinDescription: 'Paste a room id or invitation link.',
     roomInputPlaceholder: 'clear-river-42',
     continue: 'Continue',
     checking: 'Checking...',
-    directJoinHint: 'No separate join page needed: the room opens directly.',
+    directJoinHint: 'If the room exists, we will open the join screen right away.',
     errors: {
       roomInputRequired: 'Enter a room id or link',
       invalidRoom: 'Enter a valid room id or link',
@@ -70,6 +70,7 @@ export default defineResource<typeof ruVoice>()({
   room: {
     header: {
       title: 'Room {{roomId}}',
+      untitled: 'Room',
       participants: '{{count}} participants',
       participants_one: '{{count}} participant',
       participants_few: '{{count}} participants',
@@ -79,6 +80,18 @@ export default defineResource<typeof ruVoice>()({
       voiceMode: 'Voice first',
       copyLink: 'Copy link',
       leave: 'Leave'
+    },
+    panels: {
+      participants: 'Participants',
+      roomInfo: 'Room info',
+      techInfo: 'Tech info',
+      settings: 'Settings',
+      close: 'Close'
+    },
+    info: {
+      roomId: 'Room ID',
+      status: 'Status',
+      participants: 'Participants'
     },
     empty: {
       title: 'Room is waiting.',
