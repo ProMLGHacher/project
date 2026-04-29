@@ -17,11 +17,14 @@ import { clientLogRepositoryToken } from '@capabilities/client-logs/domain/repos
 import { AppendClientLogUseCase } from '@capabilities/client-logs/domain/usecases/AppendClientLogUseCase'
 import { ClearClientLogsUseCase } from '@capabilities/client-logs/domain/usecases/ClearClientLogsUseCase'
 import { ExportClientLogsUseCase } from '@capabilities/client-logs/domain/usecases/ExportClientLogsUseCase'
-import { BrowserLocalMediaRepository } from '@capabilities/media/data/repository/BrowserLocalMediaRepository'
+import { BrowserLocalPreviewRepository } from '@capabilities/media/data/repository/BrowserLocalPreviewRepository'
+import { BrowserScreenShareRepository } from '@capabilities/media/data/repository/BrowserScreenShareRepository'
+import { LocalMediaStateStore } from '@capabilities/media/data/repository/LocalMediaStateStore'
 import { BrowserMediaDeviceRepository } from '@capabilities/media/data/repository/BrowserMediaDeviceRepository'
 import {
-  localMediaRepositoryToken,
-  mediaDeviceRepositoryToken
+  localPreviewRepositoryToken,
+  mediaDeviceRepositoryToken,
+  screenShareRepositoryToken
 } from '@capabilities/media/domain/repository/tokens'
 import { ListMediaDevicesUseCase } from '@capabilities/media/domain/usecases/ListMediaDevicesUseCase'
 import { ObserveLocalMediaUseCase } from '@capabilities/media/domain/usecases/ObserveLocalMediaUseCase'
@@ -85,7 +88,8 @@ import { SettingsViewModel } from '@features/settings/presentation/view_model/Se
 import type { ClipboardRepository } from '@capabilities/clipboard/domain/repository/ClipboardRepository'
 import type { ClientLogRepository } from '@capabilities/client-logs/domain/repository/ClientLogRepository'
 import type { ConferenceAudioRepository } from '@capabilities/conference-audio/domain/repository/ConferenceAudioRepository'
-import type { LocalMediaRepository } from '@capabilities/media/domain/repository/LocalMediaRepository'
+import type { LocalPreviewRepository } from '@capabilities/media/domain/repository/LocalPreviewRepository'
+import type { ScreenShareRepository } from '@capabilities/media/domain/repository/ScreenShareRepository'
 import type { MediaDeviceRepository } from '@capabilities/media/domain/repository/MediaDeviceRepository'
 import type { RtcRepository } from '@capabilities/rtc/domain/repository/RtcRepository'
 import type { SignalingRepository } from '@capabilities/rtc/domain/repository/SignalingRepository'
@@ -124,10 +128,26 @@ class VoiceModule {
     return new BrowserMediaDeviceRepository()
   }
 
-  @Provides(localMediaRepositoryToken)
+  @Provides(LocalMediaStateStore)
   @Singleton({ lazy: true })
-  static provideLocalMediaRepository(): LocalMediaRepository {
-    return new BrowserLocalMediaRepository()
+  static provideLocalMediaStateStore(): LocalMediaStateStore {
+    return new LocalMediaStateStore()
+  }
+
+  @Provides(localPreviewRepositoryToken)
+  @Singleton({ lazy: true })
+  static provideLocalPreviewRepository(
+    @Inject(LocalMediaStateStore) stateStore: LocalMediaStateStore
+  ): LocalPreviewRepository {
+    return new BrowserLocalPreviewRepository(stateStore)
+  }
+
+  @Provides(screenShareRepositoryToken)
+  @Singleton({ lazy: true })
+  static provideScreenShareRepository(
+    @Inject(LocalMediaStateStore) stateStore: LocalMediaStateStore
+  ): ScreenShareRepository {
+    return new BrowserScreenShareRepository(stateStore)
   }
 
   @Provides(rtcRepositoryToken)
@@ -213,49 +233,49 @@ class VoiceModule {
 
   @Provides(StartLocalPreviewUseCase)
   static provideStartLocalPreviewUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new StartLocalPreviewUseCase(repository)
   }
 
   @Provides(SetMicrophoneEnabledUseCase)
   static provideSetMicrophoneEnabledUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new SetMicrophoneEnabledUseCase(repository)
   }
 
   @Provides(SetCameraEnabledUseCase)
   static provideSetCameraEnabledUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new SetCameraEnabledUseCase(repository)
   }
 
   @Provides(SetScreenShareEnabledUseCase)
   static provideSetScreenShareEnabledUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(screenShareRepositoryToken) repository: ScreenShareRepository
   ) {
     return new SetScreenShareEnabledUseCase(repository)
   }
 
   @Provides(SetNoiseSuppressionUseCase)
   static provideSetNoiseSuppressionUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new SetNoiseSuppressionUseCase(repository)
   }
 
   @Provides(ObserveLocalMediaUseCase)
   static provideObserveLocalMediaUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new ObserveLocalMediaUseCase(repository)
   }
 
   @Provides(StopLocalPreviewUseCase)
   static provideStopLocalPreviewUseCase(
-    @Inject(localMediaRepositoryToken) repository: LocalMediaRepository
+    @Inject(localPreviewRepositoryToken) repository: LocalPreviewRepository
   ) {
     return new StopLocalPreviewUseCase(repository)
   }

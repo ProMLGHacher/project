@@ -74,36 +74,45 @@ export function SettingsModal({
           <CloseIcon />
         </Button>
 
-        <aside className="flex min-h-0 flex-col border-b border-border/70 bg-background/54 p-4 md:border-b-0 md:border-r">
-          <div className="pr-10 md:pr-0">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {t('settings.eyebrow')}
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-foreground">{t('settings.title')}</h2>
-            </div>
+        <aside className="flex min-h-0 flex-col justify-between border-b border-border/70 bg-background/54 p-4 md:border-b-0 md:border-r">
+          <div className="flex flex-col gap-6 justify-start">
+            <h2 className="mt-1 text-xl font-semibold text-foreground">{t('settings.title')}</h2>
+            <nav className=" grid gap-2">
+              <SettingsTabButton
+                active={uiState.activeTab === 'profile'}
+                icon={<UserIcon />}
+                label={t('settings.tabs.profile')}
+                onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'profile' })}
+              />
+              <SettingsTabButton
+                active={uiState.activeTab === 'media'}
+                icon={<CameraIcon />}
+                label={t('settings.tabs.media')}
+                onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'media' })}
+              />
+              <SettingsTabButton
+                active={uiState.activeTab === 'appearance'}
+                icon={<SparkIcon />}
+                label={t('settings.tabs.appearance')}
+                onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'appearance' })}
+              />
+            </nav>
           </div>
-
-          <nav className="mt-5 grid gap-1">
-            <SettingsTabButton
-              active={uiState.activeTab === 'profile'}
-              icon={<UserIcon />}
-              label={t('settings.tabs.profile')}
-              onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'profile' })}
-            />
-            <SettingsTabButton
-              active={uiState.activeTab === 'media'}
-              icon={<CameraIcon />}
-              label={t('settings.tabs.media')}
-              onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'media' })}
-            />
-            <SettingsTabButton
-              active={uiState.activeTab === 'appearance'}
-              icon={<SparkIcon />}
-              label={t('settings.tabs.appearance')}
-              onClick={() => viewModel.onEvent({ type: 'tab-selected', tab: 'appearance' })}
-            />
-          </nav>
+          <div className="flex gap-2 items-center">
+            <NativeSelect
+              value={i18n.language}
+              onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}
+            >
+              {supportedLanguages.map((supportedLanguage) => (
+                <option key={supportedLanguage} value={supportedLanguage}>
+                  {supportedLanguage.toUpperCase()}
+                </option>
+              ))}
+            </NativeSelect>
+            <Button onClick={toggleMode} size="icon" variant="ghost">
+              {resolvedMode === 'dark' ? <MoonIcon /> : <SunIcon />}
+            </Button>
+          </div>
         </aside>
 
         <section className="min-h-0 overflow-y-auto overscroll-contain p-5 pr-14 sm:p-6 sm:pr-16">
@@ -150,7 +159,7 @@ export function SettingsModal({
             <AppearanceSettings
               language={i18n.language}
               mode={resolvedMode}
-              onLanguageChange={(language) => void setLanguage(language)}
+              onLanguageChange={setLanguage}
               onToggleMode={toggleMode}
             />
           )}

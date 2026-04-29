@@ -69,7 +69,7 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
   })
 
   return (
-    <section className="relative mx-auto flex min-h-screen w-full max-w-[100rem] flex-col px-2 py-2 sm:px-3 md:px-4">
+    <section className="relative mx-auto flex min-h-screen w-full flex-col px-2 py-2 sm:px-3 md:px-4">
       {uiState.error ? (
         <RoomErrorState
           actionLabel={t(uiState.error.actionLabel)}
@@ -79,7 +79,7 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
         />
       ) : (
         <>
-          <div className="grid min-h-0 flex-1 pb-24">
+          <div className="grid min-h-0 flex-1 pb-8">
             <ConferenceStage
               key={`stage:${roomId}`}
               localMediaStreams={uiState.localMediaStreams}
@@ -169,8 +169,8 @@ function RoomBottomChrome({
   readonly t: VoiceT
 }) {
   return (
-    <div className="pointer-events-none sticky bottom-3 z-30 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
-      <div className="pointer-events-auto flex min-w-0 justify-center md:justify-start">
+    <div className="pointer-events-none w-full max-w-400 mx-auto sticky bottom-3 z-30 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <div className="h-full pointer-events-auto flex items-center min-w-0 justify-center md:justify-start">
         <div className="flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-slate-950/88 p-2 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
           <div className="min-w-0 px-3">
             <p className="truncate text-sm font-semibold">{roomId || t('room.header.untitled')}</p>
@@ -197,7 +197,7 @@ function RoomBottomChrome({
         />
       </div>
 
-      <div className="pointer-events-auto flex justify-center md:justify-end">
+      <div className="pointer-events-auto flex justify-center md:justify-end md:items-center">
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/88 p-2 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
           <IconButton
             active={activePanel === 'participants'}
@@ -390,7 +390,7 @@ function IconButton({
     <button
       aria-label={label}
       className={cn(
-        'inline-flex size-10 items-center justify-center rounded-full text-white transition hover:scale-105',
+        'inline-flex size-10 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-100',
         active ? 'bg-primary text-primary-foreground' : 'bg-white/10 hover:bg-white/18'
       )}
       onClick={onClick}

@@ -25,7 +25,7 @@ const buttonSizeClasses: Record<ButtonSize, string> = {
   sm: 'min-h-9 px-3.5 text-sm',
   md: 'min-h-11 px-4.5 text-sm',
   lg: 'min-h-13 px-6 text-base',
-  icon: 'size-11 p-0'
+  icon: 'size-11 p-0 shrink-0'
 }
 
 export function buttonClassName({

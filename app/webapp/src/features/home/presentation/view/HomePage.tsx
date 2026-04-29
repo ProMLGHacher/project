@@ -25,7 +25,7 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   useSharedFlow(viewModel.uiEffect, (effect) => {
     switch (effect.type) {
       case 'open-room':
-        void navigate(`/rooms/${effect.roomId}`)
+        void navigate(`/rooms/${effect.roomId}`, { viewTransition: true })
         break
       case 'show-message':
         toasts.error(t(effect.message))
