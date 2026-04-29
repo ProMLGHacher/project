@@ -43,7 +43,7 @@ func (m *stubMediaBridge) UpdateSlotPreference(participantID string, kind domain
 	return nil
 }
 
-func (m *stubMediaBridge) HandlePublisherOffer(string, webrtc.SessionDescription) (webrtc.SessionDescription, error) {
+func (m *stubMediaBridge) HandlePublisherOffer(string, webrtc.SessionDescription, map[string]domain.SlotKind) (webrtc.SessionDescription, error) {
 	return webrtc.SessionDescription{}, nil
 }
 

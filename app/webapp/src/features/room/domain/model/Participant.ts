@@ -1,6 +1,6 @@
 export type ParticipantRole = 'host' | 'participant'
 
-export type ParticipantSlotKind = 'audio' | 'camera' | 'screen'
+export type ParticipantSlotKind = 'audio' | 'camera' | 'screen' | 'screenAudio'
 
 export type ParticipantSlot = {
   readonly enabled: boolean

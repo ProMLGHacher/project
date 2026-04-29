@@ -27,7 +27,7 @@ type MediaBridge interface {
 	AttachExistingSources(participantID string) error
 	RemoveParticipant(participantID string) error
 	UpdateSlotPreference(participantID string, kind domain.SlotKind, enabled bool) error
-	HandlePublisherOffer(participantID string, offer webrtc.SessionDescription) (webrtc.SessionDescription, error)
+	HandlePublisherOffer(participantID string, offer webrtc.SessionDescription, slotBindings map[string]domain.SlotKind) (webrtc.SessionDescription, error)
 	HandlePublisherCandidate(participantID string, candidate webrtc.ICECandidateInit) error
 	CreateSubscriberOffer(participantID string, iceRestart bool) (webrtc.SessionDescription, error)
 	HandleSubscriberAnswer(participantID string, answer webrtc.SessionDescription) (*webrtc.SessionDescription, error)
@@ -130,7 +130,7 @@ func (c *SignalingCoordinator) HandleEnvelope(ctx context.Context, sessionID str
 		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			return err
 		}
-		answer, err := c.media.HandlePublisherOffer(session.ParticipantID, payload.Description)
+		answer, err := c.media.HandlePublisherOffer(session.ParticipantID, payload.Description, payload.SlotBindings)
 		if err != nil {
 			return err
 		}

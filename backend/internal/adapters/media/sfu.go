@@ -33,7 +33,7 @@ type PublisherPeer struct {
 	RoomID        string
 	ParticipantID string
 	PC            *webrtc.PeerConnection
-	DesiredSlots  map[domain.SlotKind]bool
+	SlotBindings  map[string]domain.SlotKind
 }
 
 type SubscriberPeer struct {
@@ -96,6 +96,9 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 	if _, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 		return nil, err
 	}
+	if _, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
+		return nil, err
+	}
 	if _, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 		return nil, err
 	}
@@ -104,7 +107,7 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 		RoomID:        roomID,
 		ParticipantID: participantID,
 		PC:            pc,
-		DesiredSlots:  map[domain.SlotKind]bool{},
+		SlotBindings:  map[string]domain.SlotKind{},
 	}
 
 	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
@@ -142,9 +145,10 @@ func (s *SFU) EnsurePublisher(roomID, participantID string) (*PublisherPeer, err
 		log.Printf("[sfu] publisher-signaling-state participant_id=%s state=%s", participantID, state.String())
 	})
 
-	pc.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		slotKind := s.resolveSlot(peer, track.Kind())
+	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		slotKind := s.resolveSlot(peer, receiver)
 		if slotKind == "" {
+			log.Printf("[sfu] unresolved-publisher-slot participant_id=%s track_id=%s stream_id=%s kind=%s", peer.ParticipantID, track.ID(), track.StreamID(), track.Kind().String())
 			return
 		}
 
@@ -219,23 +223,16 @@ func (s *SFU) EnsureSubscriber(roomID, participantID string) (*SubscriberPeer, e
 }
 
 func (s *SFU) UpdateSlotPreference(participantID string, kind domain.SlotKind, enabled bool) error {
-	s.mu.Lock()
-	peer, exists := s.publishers[participantID]
-	if !exists {
-		s.mu.Unlock()
-		return nil
-	}
-	peer.DesiredSlots[kind] = enabled
-	s.mu.Unlock()
 	log.Printf("[sfu] update-slot-preference participant_id=%s kind=%s enabled=%t", participantID, kind, enabled)
 
-	// Voice and video slots stay reserved even while a track is temporarily removed.
-	// That lets the same publisher/subscriber graph recover on resume without rebuilding
-	// downstream subscriber senders or forcing a new remote slot identity.
+	if !enabled && kind != domain.SlotAudio {
+		return s.unpublish(participantID, kind)
+	}
+
 	return nil
 }
 
-func (s *SFU) HandlePublisherOffer(participantID string, offer webrtc.SessionDescription) (webrtc.SessionDescription, error) {
+func (s *SFU) HandlePublisherOffer(participantID string, offer webrtc.SessionDescription, slotBindings map[string]domain.SlotKind) (webrtc.SessionDescription, error) {
 	s.mu.RLock()
 	peer, exists := s.publishers[participantID]
 	s.mu.RUnlock()
@@ -244,6 +241,7 @@ func (s *SFU) HandlePublisherOffer(participantID string, offer webrtc.SessionDes
 	}
 
 	log.Printf("[sfu] handle-publisher-offer participant_id=%s type=%s sdp_len=%d", participantID, offer.Type.String(), len(offer.SDP))
+	s.setPublisherSlotBindings(peer, slotBindings)
 	if err := peer.PC.SetRemoteDescription(offer); err != nil {
 		log.Printf("[sfu] handle-publisher-offer-set-remote-failed participant_id=%s err=%v", participantID, err)
 		return webrtc.SessionDescription{}, err
@@ -653,20 +651,40 @@ func (s *SFU) finishNegotiation(participantID string) *webrtc.SessionDescription
 	return &local
 }
 
-func (s *SFU) resolveSlot(peer *PublisherPeer, codecType webrtc.RTPCodecType) domain.SlotKind {
-	if codecType == webrtc.RTPCodecTypeAudio {
-		return domain.SlotAudio
+func (s *SFU) setPublisherSlotBindings(peer *PublisherPeer, bindings map[string]domain.SlotKind) {
+	next := map[string]domain.SlotKind{}
+	for mid, kind := range bindings {
+		if mid == "" || !isStableSlot(kind) {
+			continue
+		}
+		next[mid] = kind
 	}
 
-	if peer.DesiredSlots[domain.SlotCamera] {
-		return domain.SlotCamera
+	s.mu.Lock()
+	peer.SlotBindings = next
+	s.mu.Unlock()
+	log.Printf("[sfu] publisher-slot-bindings participant_id=%s bindings=%v", peer.ParticipantID, next)
+}
+
+func (s *SFU) resolveSlot(peer *PublisherPeer, receiver *webrtc.RTPReceiver) domain.SlotKind {
+	if receiver == nil || receiver.RTPTransceiver() == nil {
+		return ""
 	}
 
-	if peer.DesiredSlots[domain.SlotScreen] {
-		return domain.SlotScreen
-	}
+	mid := receiver.RTPTransceiver().Mid()
+	s.mu.RLock()
+	slotKind := peer.SlotBindings[mid]
+	s.mu.RUnlock()
+	return slotKind
+}
 
-	return domain.SlotCamera
+func isStableSlot(kind domain.SlotKind) bool {
+	for _, stableKind := range domain.StableSlotKinds {
+		if kind == stableKind {
+			return true
+		}
+	}
+	return false
 }
 
 func clonePacket(packet *rtp.Packet) *rtp.Packet {

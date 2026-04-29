@@ -442,9 +442,7 @@ export class RoomViewModel extends ViewModel {
         prejoinOpen: true,
         participants: [],
         localParticipantId: null,
-        localStream: null,
         localMediaStreams: {},
-        remoteStreams: {},
         remoteMediaStreams: {},
         microphone: {
           ...state.microphone,
@@ -469,9 +467,7 @@ export class RoomViewModel extends ViewModel {
       ...state,
       participants: session.snapshot.participants as Participant[],
       localParticipantId: session.participantId,
-      localStream: state.localStream,
       localMediaStreams: state.localMediaStreams,
-      remoteStreams: state.remoteStreams,
       remoteMediaStreams: state.remoteMediaStreams,
       microphone: {
         ...state.microphone,
@@ -518,9 +514,7 @@ export class RoomViewModel extends ViewModel {
       roomId: session.roomId || state.roomId,
       localParticipantId: session.participantId || state.localParticipantId,
       participants: (session.snapshot?.participants ?? state.participants) as Participant[],
-      localStream: session.localStream,
       localMediaStreams: session.localMediaStreams,
-      remoteStreams: session.remoteStreams,
       remoteMediaStreams: session.remoteMediaStreams
     }
 
@@ -658,9 +652,7 @@ export class RoomViewModel extends ViewModel {
       status: 'connecting',
       participants: [],
       localParticipantId: null,
-      localStream: null,
       localMediaStreams: {},
-      remoteStreams: {},
       remoteMediaStreams: {},
       error: null,
       activePanel: null,
@@ -835,7 +827,6 @@ function createDiagnostics(
   const nextSession = session ?? null
   const roomId = nextSession?.roomId || state.roomId || 'not selected'
   const participants = nextSession?.snapshot?.participants ?? state.participants
-  const localStream = nextSession?.localStream ?? state.localStream
   const localMediaStreams = nextSession?.localMediaStreams ?? state.localMediaStreams
   const remoteMediaStreams = nextSession?.remoteMediaStreams ?? state.remoteMediaStreams
   const diagnostics = rtcDiagnostics
@@ -850,7 +841,7 @@ function createDiagnostics(
     publisher: [
       `Connection: ${diagnostics?.publisherConnectionState ?? state.status}`,
       `ICE: ${diagnostics?.publisherIceState ?? 'unknown'}`,
-      `Local tracks: ${describeStreamTracks(localStream)} / camera=${Boolean(localMediaStreams.camera)} / screen=${Boolean(localMediaStreams.screen)}`
+      `Local slots: mic=${Boolean(localMediaStreams.audio)} / camera=${Boolean(localMediaStreams.camera)} / screen=${Boolean(localMediaStreams.screen)} / screenAudio=${Boolean(localMediaStreams.screenAudio)}`
     ],
     subscriber: [
       `Connection: ${diagnostics?.subscriberConnectionState ?? 'unknown'}`,
@@ -864,17 +855,6 @@ function createDiagnostics(
       `Last error: ${diagnostics?.lastError ?? 'none'}`
     ]
   }
-}
-
-function describeStreamTracks(stream: MediaStream | null): string {
-  if (!stream) {
-    return 'none'
-  }
-
-  const audio = stream.getAudioTracks().filter((track) => track.readyState === 'live').length
-  const video = stream.getVideoTracks().filter((track) => track.readyState === 'live').length
-
-  return `audio=${audio}, video=${video}`
 }
 
 function formatSignals(signals: readonly string[] | undefined): string {

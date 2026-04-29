@@ -9,12 +9,13 @@ import (
 type SlotKind string
 
 const (
-	SlotAudio  SlotKind = "audio"
-	SlotCamera SlotKind = "camera"
-	SlotScreen SlotKind = "screen"
+	SlotAudio       SlotKind = "audio"
+	SlotCamera      SlotKind = "camera"
+	SlotScreen      SlotKind = "screen"
+	SlotScreenAudio SlotKind = "screenAudio"
 )
 
-var StableSlotKinds = []SlotKind{SlotAudio, SlotCamera, SlotScreen}
+var StableSlotKinds = []SlotKind{SlotAudio, SlotCamera, SlotScreen, SlotScreenAudio}
 
 type ParticipantRole string
 

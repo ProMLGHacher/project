@@ -1,5 +1,5 @@
 export type ParticipantRole = 'host' | 'participant'
-export type SlotKind = 'audio' | 'camera' | 'screen'
+export type SlotKind = 'audio' | 'camera' | 'screen' | 'screenAudio'
 export type SignalPeer = 'publisher' | 'subscriber'
 
 export interface SlotState {
@@ -37,6 +37,7 @@ export interface SignalEnvelope<T = unknown> {
 export interface SessionDescriptionPayload {
   peer: SignalPeer
   description: RTCSessionDescriptionInit
+  slotBindings?: Record<string, SlotKind>
 }
 
 export interface CandidatePayload {

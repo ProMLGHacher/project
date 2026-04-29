@@ -337,8 +337,8 @@ func (a *mediaBridgeAdapter) UpdateSlotPreference(participantID string, kind dom
 	return a.sfu.UpdateSlotPreference(participantID, kind, enabled)
 }
 
-func (a *mediaBridgeAdapter) HandlePublisherOffer(participantID string, offer webrtc.SessionDescription) (webrtc.SessionDescription, error) {
-	return a.sfu.HandlePublisherOffer(participantID, offer)
+func (a *mediaBridgeAdapter) HandlePublisherOffer(participantID string, offer webrtc.SessionDescription, slotBindings map[string]domain.SlotKind) (webrtc.SessionDescription, error) {
+	return a.sfu.HandlePublisherOffer(participantID, offer, slotBindings)
 }
 
 func (a *mediaBridgeAdapter) HandlePublisherCandidate(participantID string, candidate webrtc.ICECandidateInit) error {

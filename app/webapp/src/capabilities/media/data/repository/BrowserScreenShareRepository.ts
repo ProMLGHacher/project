@@ -39,7 +39,7 @@ export class BrowserScreenShareRepository implements ScreenShareRepository {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false
+        audio: true
       })
 
       if (!this.isLatestScreenShareRequest(requestId)) {
@@ -89,26 +89,44 @@ export class BrowserScreenShareRepository implements ScreenShareRepository {
 
   private markScreenShareAsReady(stream: MediaStream): void {
     const screenTrack = firstOrNull(stream.getVideoTracks())
+    const screenAudioTrack = firstOrNull(stream.getAudioTracks())
 
     this.mediaState.update((state) => ({
       ...state,
-      tracks: updateTrack(state.tracks, 'screen', (track) => ({
-        ...track,
-        enabled: Boolean(screenTrack),
-        available: Boolean(screenTrack),
-        deviceId: getTrackDeviceId(screenTrack),
-        label: getTrackLabel(screenTrack)
-      }))
+      tracks: updateTrack(
+        updateTrack(state.tracks, 'screen', (track) => ({
+          ...track,
+          enabled: Boolean(screenTrack),
+          available: Boolean(screenTrack),
+          deviceId: getTrackDeviceId(screenTrack),
+          label: getTrackLabel(screenTrack)
+        })),
+        'screenAudio',
+        (track) => ({
+          ...track,
+          enabled: Boolean(screenAudioTrack),
+          available: Boolean(screenAudioTrack),
+          deviceId: getTrackDeviceId(screenAudioTrack),
+          label: getTrackLabel(screenAudioTrack)
+        })
+      )
     }))
   }
 
   private markScreenShareAsStopped(): void {
     this.mediaState.update((state) => ({
       ...state,
-      tracks: updateTrack(state.tracks, 'screen', (track) => ({
-        ...track,
-        enabled: false
-      }))
+      tracks: updateTrack(
+        updateTrack(state.tracks, 'screen', (track) => ({
+          ...track,
+          enabled: false
+        })),
+        'screenAudio',
+        (track) => ({
+          ...track,
+          enabled: false
+        })
+      )
     }))
   }
 
@@ -117,11 +135,19 @@ export class BrowserScreenShareRepository implements ScreenShareRepository {
 
     this.mediaState.update((state) => ({
       ...state,
-      tracks: updateTrack(state.tracks, 'screen', (track) => ({
-        ...track,
-        enabled: false,
-        available: mediaError.type === 'device-not-found' ? false : track.available
-      }))
+      tracks: updateTrack(
+        updateTrack(state.tracks, 'screen', (track) => ({
+          ...track,
+          enabled: false,
+          available: mediaError.type === 'device-not-found' ? false : track.available
+        })),
+        'screenAudio',
+        (track) => ({
+          ...track,
+          enabled: false,
+          available: mediaError.type === 'device-not-found' ? false : track.available
+        })
+      )
     }))
   }
 

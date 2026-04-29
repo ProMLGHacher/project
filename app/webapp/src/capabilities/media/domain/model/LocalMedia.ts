@@ -1,6 +1,6 @@
 import type { MediaDeviceId } from './MediaDevice'
 
-export type LocalMediaTrackKind = 'audio' | 'camera' | 'screen'
+export type LocalMediaTrackKind = 'audio' | 'camera' | 'screen' | 'screenAudio'
 
 export type LocalMediaTrackState = {
   readonly kind: LocalMediaTrackKind

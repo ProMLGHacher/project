@@ -39,8 +39,9 @@ type ParticipantPayload struct {
 }
 
 type SessionDescriptionPayload struct {
-	Peer        string                    `json:"peer"`
-	Description webrtc.SessionDescription `json:"description"`
+	Peer         string                     `json:"peer"`
+	Description  webrtc.SessionDescription  `json:"description"`
+	SlotBindings map[string]domain.SlotKind `json:"slotBindings,omitempty"`
 }
 
 type CandidatePayload struct {

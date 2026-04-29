@@ -20,8 +20,8 @@ func TestNewRoomSeedsHostAndStableSlots(t *testing.T) {
 		t.Fatalf("expected host participant id to be preserved, got %q", room.HostParticipantID)
 	}
 
-	if len(host.Slots) != 3 {
-		t.Fatalf("expected 3 stable slots, got %d", len(host.Slots))
+	if len(host.Slots) != 4 {
+		t.Fatalf("expected 4 stable slots, got %d", len(host.Slots))
 	}
 
 	if !host.Slots[SlotAudio].Enabled {

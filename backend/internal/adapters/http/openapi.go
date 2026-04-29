@@ -423,7 +423,7 @@ func schemas() map[string]any {
 		"SlotKind": map[string]any{
 			"type":        "string",
 			"description": "Stable logical media slot. Slot identity is participantId + kind, not raw WebRTC track id.",
-			"enum":        []any{"audio", "camera", "screen"},
+			"enum":        []any{"audio", "camera", "screen", "screenAudio"},
 		},
 		"SlotState": map[string]any{
 			"type":                 "object",
@@ -452,7 +452,7 @@ func schemas() map[string]any {
 				"role":        ref("#/components/schemas/ParticipantRole"),
 				"slots": map[string]any{
 					"type":        "array",
-					"description": "Stable media slots. The backend always models audio, camera, and screen slots.",
+					"description": "Stable media slots. The backend always models microphone, camera, screen video, and screen audio slots.",
 					"items":       ref("#/components/schemas/SlotState"),
 				},
 			},

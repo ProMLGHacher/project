@@ -16,9 +16,7 @@ const initialSession: RtcSession = {
   participantId: '',
   status: 'idle',
   snapshot: null,
-  localStream: null,
   localMediaStreams: {},
-  remoteStreams: {},
   remoteMediaStreams: {}
 }
 
@@ -37,9 +35,7 @@ export class BrowserRtcRepository implements RtcRepository {
       participantId: params.participantId,
       status: 'connecting',
       snapshot: null,
-      localStream: null,
       localMediaStreams: {},
-      remoteStreams: {},
       remoteMediaStreams: {}
     })
 
@@ -49,7 +45,6 @@ export class BrowserRtcRepository implements RtcRepository {
       onRemoteTrack: (participantId, kind, stream) =>
         this.applyRemoteStream(participantId, kind, stream),
       onRemoteStreamsReset: () => this.clearRemoteStreams(),
-      onLocalStream: (stream) => this.applyLocalStream(stream),
       onLocalSlotStream: (kind, stream) => this.applyLocalSlotStream(kind, stream),
       onStateChange: (state) => this.updateStatus(state),
       onDiagnostics: (diagnostics) => this.updateDiagnostics(diagnostics),
@@ -84,9 +79,7 @@ export class BrowserRtcRepository implements RtcRepository {
     this.sessionState.update((session) => ({
       ...session,
       status: 'closed',
-      localStream: null,
       localMediaStreams: {},
-      remoteStreams: {},
       remoteMediaStreams: {}
     }))
   }
@@ -131,9 +124,7 @@ export class BrowserRtcRepository implements RtcRepository {
       roomId: snapshot.roomId,
       participantId,
       status: 'connected',
-      localStream: this.sessionState.value.localStream,
       localMediaStreams: this.sessionState.value.localMediaStreams,
-      remoteStreams: this.filterRemoteStreams(snapshot),
       remoteMediaStreams: this.filterRemoteMediaStreams(snapshot),
       snapshot: {
         roomId: snapshot.roomId,
@@ -155,30 +146,38 @@ export class BrowserRtcRepository implements RtcRepository {
       return
     }
 
-    this.sessionState.update((session) => ({
-      ...session,
-      snapshot: {
-        ...snapshot,
-        participants: snapshot.participants.map((participant) =>
-          participant.id === slot.participantId
-            ? {
-                ...participant,
-                slots: participant.slots.map((currentSlot) =>
-                  currentSlot.kind === slot.kind
-                    ? {
-                        ...currentSlot,
-                        enabled: slot.enabled,
-                        publishing: slot.publishing,
-                        trackBound: slot.trackBound,
-                        revision: currentSlot.revision + 1
-                      }
-                    : currentSlot
-                )
-              }
-            : participant
-        )
+    this.sessionState.update((session) => {
+      const nextRemoteMediaStreams =
+        slot.trackBound || slot.participantId === session.participantId
+          ? session.remoteMediaStreams
+          : withoutRemoteSlotStream(session.remoteMediaStreams, slot.participantId, slot.kind)
+
+      return {
+        ...session,
+        remoteMediaStreams: nextRemoteMediaStreams,
+        snapshot: {
+          ...snapshot,
+          participants: snapshot.participants.map((participant) =>
+            participant.id === slot.participantId
+              ? {
+                  ...participant,
+                  slots: participant.slots.map((currentSlot) =>
+                    currentSlot.kind === slot.kind
+                      ? {
+                          ...currentSlot,
+                          enabled: slot.enabled,
+                          publishing: slot.publishing,
+                          trackBound: slot.trackBound,
+                          revision: currentSlot.revision + 1
+                        }
+                      : currentSlot
+                  )
+                }
+              : participant
+          )
+        }
       }
-    }))
+    })
   }
 
   private updateStatus(state: string) {
@@ -188,27 +187,39 @@ export class BrowserRtcRepository implements RtcRepository {
     }))
   }
 
-  private applyLocalStream(stream: MediaStream | null) {
-    this.sessionState.update((session) => ({ ...session, localStream: stream }))
-  }
-
   private applyLocalSlotStream(kind: RtcMediaSlotKind, stream: MediaStream | null) {
+    if (!stream) {
+      this.sessionState.update((session) => ({
+        ...session,
+        localMediaStreams: withoutSlotStream(session.localMediaStreams, kind)
+      }))
+      return
+    }
+
     this.sessionState.update((session) => ({
       ...session,
       localMediaStreams: {
         ...session.localMediaStreams,
-        [kind]: stream ?? undefined
+        [kind]: stream
       }
     }))
   }
 
-  private applyRemoteStream(participantId: string, kind: RtcMediaSlotKind, stream: MediaStream) {
+  private applyRemoteStream(
+    participantId: string,
+    kind: RtcMediaSlotKind,
+    stream: MediaStream | null
+  ) {
+    if (!stream) {
+      this.sessionState.update((session) => ({
+        ...session,
+        remoteMediaStreams: withoutRemoteSlotStream(session.remoteMediaStreams, participantId, kind)
+      }))
+      return
+    }
+
     this.sessionState.update((session) => ({
       ...session,
-      remoteStreams: {
-        ...session.remoteStreams,
-        [participantId]: session.remoteStreams[participantId] ?? stream
-      },
       remoteMediaStreams: {
         ...session.remoteMediaStreams,
         [participantId]: {
@@ -222,18 +233,8 @@ export class BrowserRtcRepository implements RtcRepository {
   private clearRemoteStreams() {
     this.sessionState.update((session) => ({
       ...session,
-      remoteStreams: {},
       remoteMediaStreams: {}
     }))
-  }
-
-  private filterRemoteStreams(snapshot: RoomSnapshot): Readonly<Record<string, MediaStream>> {
-    const activeParticipantIds = new Set(snapshot.participants.map((participant) => participant.id))
-    return Object.fromEntries(
-      Object.entries(this.sessionState.value.remoteStreams).filter(([participantId]) =>
-        activeParticipantIds.has(participantId)
-      )
-    )
   }
 
   private filterRemoteMediaStreams(
@@ -281,6 +282,35 @@ function emptyDiagnostics(): RtcDiagnostics {
     recentSignalsReceived: [],
     lastError: null
   }
+}
+
+function withoutRemoteSlotStream(
+  streams: Readonly<Record<string, RtcMediaStreams>>,
+  participantId: string,
+  kind: RtcMediaSlotKind
+): Readonly<Record<string, RtcMediaStreams>> {
+  const participantStreams = streams[participantId]
+  if (!participantStreams?.[kind]) {
+    return streams
+  }
+
+  const nextParticipantStreams = { ...participantStreams }
+  delete nextParticipantStreams[kind]
+
+  return {
+    ...streams,
+    [participantId]: nextParticipantStreams
+  }
+}
+
+function withoutSlotStream(streams: RtcMediaStreams, kind: RtcMediaSlotKind): RtcMediaStreams {
+  if (!streams[kind]) {
+    return streams
+  }
+
+  const nextStreams = { ...streams }
+  delete nextStreams[kind]
+  return nextStreams
 }
 
 function readableError(error: unknown): string {

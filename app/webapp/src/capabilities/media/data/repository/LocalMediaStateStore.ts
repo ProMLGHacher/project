@@ -6,7 +6,8 @@ type LocalMediaTrack = LocalMediaState['tracks'][number]
 export const createInitialTracks = (): LocalMediaTrack[] => [
   { kind: 'audio', enabled: true, available: true, deviceId: null, label: null },
   { kind: 'camera', enabled: false, available: true, deviceId: null, label: null },
-  { kind: 'screen', enabled: false, available: true, deviceId: null, label: null }
+  { kind: 'screen', enabled: false, available: true, deviceId: null, label: null },
+  { kind: 'screenAudio', enabled: false, available: true, deviceId: null, label: null }
 ]
 
 export const createInitialState = (): LocalMediaState => ({

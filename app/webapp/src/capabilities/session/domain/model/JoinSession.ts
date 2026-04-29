@@ -6,7 +6,7 @@ export type JoinSessionIceServer = {
   readonly username?: string
 }
 
-export type JoinSessionParticipantSlotKind = 'audio' | 'camera' | 'screen'
+export type JoinSessionParticipantSlotKind = 'audio' | 'camera' | 'screen' | 'screenAudio'
 
 export type JoinSessionParticipantSlot = {
   readonly enabled: boolean

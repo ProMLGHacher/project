@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, type ComponentProps, type ReactNode } from 'react'
+import { Fragment, memo, useEffect, useRef, type ComponentProps, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useSharedFlow, useStateFlow, useViewModel, type PropsWithVM } from '@kvt/react'
 import { useTranslation } from 'react-i18next'
@@ -471,13 +471,27 @@ function ConferenceStage({
               ? localMediaStreams
               : (remoteMediaStreams[participant.id] ?? {})
           const audioStream = mediaStreams.audio ?? null
+          const screenAudioStream = mediaStreams.screenAudio ?? null
           const audioOn = slotEnabled(participant, 'audio')
+          const screenAudioOn = slotEnabled(participant, 'screenAudio')
 
-          if (!audioOn || !audioStream || participant.id === localParticipantId) {
+          if (participant.id === localParticipantId) {
             return null
           }
 
-          return <ParticipantAudio key={`${participant.id}:audio`} stream={audioStream} />
+          return (
+            <Fragment key={`${participant.id}:audio-slots`}>
+              {audioOn && audioStream && (
+                <ParticipantAudio key={`${participant.id}:audio`} stream={audioStream} />
+              )}
+              {screenAudioOn && screenAudioStream && (
+                <ParticipantAudio
+                  key={`${participant.id}:screenAudio`}
+                  stream={screenAudioStream}
+                />
+              )}
+            </Fragment>
+          )
         })}
       </div>
     </div>
@@ -507,8 +521,14 @@ function ParticipantTile({
     <Card
       className={cn(
         'overflow-hidden rounded-[1.75rem] bg-slate-950 text-white shadow-none transition-all duration-300',
-        speaking ? 'border-primary/80 ring-2 ring-primary/45' : 'border-white/10',
-        !tile.audioOn && 'border-destructive/45 ring-1 ring-destructive/20',
+        tile.kind === 'screen'
+          ? 'border-white/15 bg-slate-950 ring-1 ring-info/25'
+          : speaking
+            ? 'border-primary/80 ring-2 ring-primary/45'
+            : 'border-white/10',
+        tile.kind !== 'screen' &&
+          !tile.audioOn &&
+          'border-destructive/45 ring-1 ring-destructive/20',
         pinned && 'md:col-span-2 xl:col-span-2'
       )}
     >
@@ -519,18 +539,19 @@ function ParticipantTile({
           tile.kind === 'screen'
             ? pinned
               ? 'aspect-[16/9] min-h-[22rem]'
-              : 'aspect-[16/10]'
+              : 'aspect-[16/9]'
             : pinned
               ? 'aspect-[16/9] min-h-[20rem]'
               : 'aspect-video',
-          tile.kind === 'presence' && 'min-h-[15rem]'
+          tile.kind === 'presence' && 'min-h-[15rem]',
+          tile.kind === 'screen' && 'm-1 rounded-[1.45rem] border border-white/10 bg-black'
         )}
       >
         {tile.stream ? (
           <ParticipantVideo
             muted={tile.local}
-            objectFit={tile.kind === 'screen' ? 'contain' : 'cover'}
             stream={tile.stream}
+            variant={tile.kind === 'screen' ? 'screen' : 'participant'}
           />
         ) : (
           <div className="grid h-full place-items-center p-6 text-center">
@@ -561,16 +582,27 @@ function ParticipantTile({
           </div>
         )}
 
-        {!tile.audioOn && (
-          <div className="pointer-events-none absolute inset-0 bg-destructive/10" />
+        {tile.kind === 'screen' && (
+          <div className="pointer-events-none absolute inset-0 z-20 border-2 border-white/10" />
         )}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-slate-950/90 to-transparent" />
-        <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-3">
+        {tile.kind !== 'screen' && !tile.audioOn && (
+          <div className="pointer-events-none absolute inset-0 z-20 bg-destructive/10" />
+        )}
+        <div
+          className={cn(
+            'absolute inset-x-0 bottom-0 z-20 h-28 bg-linear-to-t to-transparent',
+            tile.kind === 'screen' ? 'from-slate-950/80' : 'from-slate-950/90'
+          )}
+        />
+        <div className="absolute left-3 right-3 top-3 z-30 flex items-start justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {tile.local && <Badge variant="info">{t('room.participant.you')}</Badge>}
             {tile.kind === 'screen' && (
-              <Badge variant="warning">{t('room.participant.screen')}</Badge>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-black/20 backdrop-blur">
+                <ScreenIcon />
+                <span>{t('room.participant.screen')}</span>
+              </div>
             )}
+            {tile.local && <Badge variant="info">{t('room.participant.you')}</Badge>}
             {pinned && <Badge variant="success">{t('room.participant.pinned')}</Badge>}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -595,12 +627,19 @@ function ParticipantTile({
           </div>
         </div>
 
-        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-base font-medium">{title}</p>
-            <p className="truncate text-xs text-slate-300">
-              {t(`room.participant.roles.${tile.participant.role}`)}
-            </p>
+        <div className="absolute bottom-3 left-3 right-3 z-30 flex items-end justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            {tile.kind === 'screen' && (
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-black/45 text-white ring-1 ring-white/15">
+                <ScreenIcon />
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-base font-medium">{title}</p>
+              <p className="truncate text-xs text-slate-300">
+                {t(`room.participant.roles.${tile.participant.role}`)}
+              </p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <StatusDot enabled={tile.audioOn} label={t('room.participant.mic')}>
@@ -624,26 +663,48 @@ function ParticipantTile({
 const ParticipantVideo = memo(function ParticipantVideo({
   stream,
   muted,
-  objectFit
+  variant
 }: {
   readonly stream: MediaStream
   readonly muted: boolean
-  readonly objectFit: 'cover' | 'contain'
+  readonly variant: 'participant' | 'screen'
 }) {
   const ref = useRef<HTMLVideoElement | null>(null)
+  const backgroundRef = useRef<HTMLVideoElement | null>(null)
   useAttachMediaStream(ref, stream)
+  useAttachMediaStream(backgroundRef, stream)
 
   return (
-    <video
-      autoPlay
-      className={cn(
-        'h-full w-full bg-slate-950',
-        objectFit === 'contain' ? 'object-contain' : 'object-cover'
-      )}
-      muted={muted}
-      playsInline
-      ref={ref}
-    />
+    <div className="absolute inset-0 z-0 grid place-items-center overflow-hidden bg-slate-950">
+      <video
+        autoPlay
+        className={cn(
+          'absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-2xl',
+          variant === 'screen' ? 'opacity-20 saturate-100' : 'opacity-55 saturate-125'
+        )}
+        muted
+        playsInline
+        ref={backgroundRef}
+      />
+      <div
+        className={cn(
+          'absolute inset-0',
+          variant === 'screen'
+            ? 'bg-black/20'
+            : 'bg-linear-to-br from-slate-950/35 via-transparent to-slate-950/45'
+        )}
+      />
+      <video
+        autoPlay
+        className={cn(
+          'relative h-full w-full object-contain object-center',
+          variant === 'screen' && 'p-2 sm:p-3'
+        )}
+        muted={muted}
+        playsInline
+        ref={ref}
+      />
+    </div>
   )
 })
 
@@ -1052,6 +1113,18 @@ function buildParticipantTiles(
         screenOn,
         awaitingMedia: cameraOn && !cameraStream
       })
+    } else {
+      tiles.push({
+        id: `${participant.id}:presence`,
+        participant,
+        kind: 'presence',
+        stream: null,
+        local,
+        audioOn,
+        cameraOn,
+        screenOn,
+        awaitingMedia: audioOn
+      })
     }
 
     if (screenOn || screenStream) {
@@ -1067,27 +1140,15 @@ function buildParticipantTiles(
         awaitingMedia: screenOn && !screenStream
       })
     }
-
-    if (!cameraOn && !screenOn && !cameraStream && !screenStream) {
-      tiles.push({
-        id: `${participant.id}:presence`,
-        participant,
-        kind: 'presence',
-        stream: null,
-        local,
-        audioOn,
-        cameraOn,
-        screenOn,
-        awaitingMedia: audioOn
-      })
-    }
   }
 
   return tiles
 }
 
 function slotEnabled(participant: Participant, kind: ParticipantSlotKind): boolean {
-  return participant.slots.some((slot) => slot.kind === kind && slot.enabled && slot.publishing)
+  return participant.slots.some(
+    (slot) => slot.kind === kind && slot.enabled && slot.publishing && slot.trackBound
+  )
 }
 
 function downloadTextFile(fileName: string, content: string) {

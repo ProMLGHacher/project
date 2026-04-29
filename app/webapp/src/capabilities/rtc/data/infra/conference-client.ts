@@ -55,8 +55,9 @@ export interface ConferenceDiagnostics {
     micTrack: boolean
     cameraTrack: boolean
     screenTrack: boolean
+    screenAudioTrack: boolean
   }
-  remoteStreams: number
+  remoteSlotStreams: number
   recentSignalsSent: string[]
   recentSignalsReceived: string[]
   lastError: string | null
@@ -65,9 +66,8 @@ export interface ConferenceDiagnostics {
 type ConferenceEvents = {
   onSnapshot: (snapshot: RoomSnapshot) => void
   onSlotUpdated: (payload: SlotUpdatedPayload) => void
-  onRemoteTrack: (participantId: string, kind: SlotKind, stream: MediaStream) => void
+  onRemoteTrack: (participantId: string, kind: SlotKind, stream: MediaStream | null) => void
   onRemoteStreamsReset?: () => void
-  onLocalStream?: (stream: MediaStream | null) => void
   onLocalSlotStream?: (kind: SlotKind, stream: MediaStream | null) => void
   onStateChange: (state: string) => void
   onDiagnostics?: (diagnostics: ConferenceDiagnostics) => void
@@ -88,12 +88,13 @@ export class ConferenceClient {
   private audioTransceiver: RTCRtpTransceiver | null = null
   private cameraTransceiver: RTCRtpTransceiver | null = null
   private screenTransceiver: RTCRtpTransceiver | null = null
+  private screenAudioTransceiver: RTCRtpTransceiver | null = null
   private localAudioTrack: MediaStreamTrack | null = null
   private localCameraTrack: MediaStreamTrack | null = null
   private localScreenTrack: MediaStreamTrack | null = null
-  private localPreviewStream: MediaStream | null = null
+  private localScreenAudioTrack: MediaStreamTrack | null = null
   private localSlotPreviewStreams = new Map<SlotKind, MediaStream>()
-  private remoteStreams = new Map<string, Map<SlotKind, MediaStream>>()
+  private remoteSlotStreams = new Map<string, Map<SlotKind, MediaStream>>()
   private makingPublisherOffer = false
   private allowPublisherNegotiation = false
   private pendingPublisherCandidates: RTCIceCandidateInit[] = []
@@ -159,7 +160,7 @@ export class ConferenceClient {
 
       if (!enabled && !this.localAudioTrack) {
         await this.audioTransceiver.sender.replaceTrack(null)
-        this.publishLocalStream()
+        this.publishLocalSlots()
         this.sendSlotUpdate('audio', false, false, false)
         this.emitDiagnostics()
         logInfo('rtc', 'microphone toggled', { enabled })
@@ -176,7 +177,7 @@ export class ConferenceClient {
         this.localAudioTrack.enabled = enabled
       }
 
-      this.publishLocalStream()
+      this.publishLocalSlots()
       this.sendSlotUpdate('audio', enabled, enabled, Boolean(this.localAudioTrack))
       this.emitDiagnostics()
       logInfo('rtc', 'microphone toggled', { enabled })
@@ -204,7 +205,7 @@ export class ConferenceClient {
         this.localCameraTrack = null
       }
 
-      this.publishLocalStream()
+      this.publishLocalSlots()
       this.sendSlotUpdate('camera', enabled, enabled, Boolean(this.localCameraTrack))
       this.emitDiagnostics()
       logInfo('rtc', 'camera toggled', { enabled })
@@ -216,27 +217,51 @@ export class ConferenceClient {
 
   async setScreenEnabled(enabled: boolean) {
     try {
-      if (!this.screenTransceiver) {
+      if (!this.screenTransceiver || !this.screenAudioTransceiver) {
         return
       }
 
       if (enabled) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
         this.localScreenTrack = stream.getVideoTracks()[0] ?? null
+        this.localScreenAudioTrack = stream.getAudioTracks()[0] ?? null
         if (this.localScreenTrack) {
           this.localScreenTrack.addEventListener('ended', () => {
             void this.setScreenEnabled(false)
           })
         }
+        if (this.localScreenAudioTrack) {
+          this.localScreenAudioTrack.addEventListener(
+            'ended',
+            () => {
+              this.localScreenAudioTrack = null
+              void this.screenAudioTransceiver?.sender.replaceTrack(null)
+              this.publishLocalSlots()
+              this.sendSlotUpdate('screenAudio', false, false, false)
+              this.emitDiagnostics()
+            },
+            { once: true }
+          )
+        }
         await this.screenTransceiver.sender.replaceTrack(this.localScreenTrack)
+        await this.screenAudioTransceiver.sender.replaceTrack(this.localScreenAudioTrack)
       } else {
         await this.screenTransceiver.sender.replaceTrack(null)
+        await this.screenAudioTransceiver.sender.replaceTrack(null)
         this.localScreenTrack?.stop()
+        this.localScreenAudioTrack?.stop()
         this.localScreenTrack = null
+        this.localScreenAudioTrack = null
       }
 
-      this.publishLocalStream()
+      this.publishLocalSlots()
       this.sendSlotUpdate('screen', enabled, enabled, Boolean(this.localScreenTrack))
+      this.sendSlotUpdate(
+        'screenAudio',
+        Boolean(enabled && this.localScreenAudioTrack),
+        Boolean(enabled && this.localScreenAudioTrack),
+        Boolean(this.localScreenAudioTrack)
+      )
       this.emitDiagnostics()
       logInfo('rtc', 'screen share toggled', { enabled })
     } catch (error) {
@@ -264,12 +289,12 @@ export class ConferenceClient {
     this.localAudioTrack?.stop()
     this.localCameraTrack?.stop()
     this.localScreenTrack?.stop()
-    this.localPreviewStream = null
+    this.localScreenAudioTrack?.stop()
     this.localSlotPreviewStreams.clear()
-    this.events.onLocalStream?.(null)
     this.events.onLocalSlotStream?.('audio', null)
     this.events.onLocalSlotStream?.('camera', null)
     this.events.onLocalSlotStream?.('screen', null)
+    this.events.onLocalSlotStream?.('screenAudio', null)
     this.emitDiagnostics()
     logInfo('rtc', 'conference client closed')
   }
@@ -334,13 +359,22 @@ export class ConferenceClient {
       pc.ontrack = (event) => {
         const [stream] = event.streams
         const participantId = stream?.id ?? 'unknown'
-        const slotKind = (event.track.id as SlotKind) || inferSlotKind(event.track.kind)
+        const slotKind = parseSlotKind(event.track.id)
+        if (!slotKind) {
+          logWarn('rtc', 'remote track ignored without slot identity', {
+            trackKind: event.track.kind,
+            trackId: event.track.id,
+            streamId: stream?.id ?? 'unknown',
+            transceiverMid: event.transceiver?.mid ?? null
+          })
+          return
+        }
         const participantStreams =
-          this.remoteStreams.get(participantId) ?? new Map<SlotKind, MediaStream>()
+          this.remoteSlotStreams.get(participantId) ?? new Map<SlotKind, MediaStream>()
         const remoteStream = participantStreams.get(slotKind) ?? new MediaStream()
         syncPreviewTrack(remoteStream, event.track.kind as 'audio' | 'video', event.track)
         participantStreams.set(slotKind, remoteStream)
-        this.remoteStreams.set(participantId, participantStreams)
+        this.remoteSlotStreams.set(participantId, participantStreams)
         this.events.onRemoteTrack(participantId, slotKind, remoteStream)
         this.emitDiagnostics()
         logInfo('rtc', 'remote track attached', {
@@ -380,6 +414,10 @@ export class ConferenceClient {
             trackKind: event.track.kind,
             trackId: event.track.id
           })
+          remoteStream.removeTrack(event.track)
+          participantStreams.delete(slotKind)
+          this.events.onRemoteTrack(participantId, slotKind, null)
+          this.emitDiagnostics()
         }
 
         event.track.addEventListener('mute', handleMute)
@@ -406,10 +444,14 @@ export class ConferenceClient {
     this.audioTransceiver = this.publisherPc.addTransceiver('audio', { direction: 'sendonly' })
     this.cameraTransceiver = this.publisherPc.addTransceiver('video', { direction: 'sendonly' })
     this.screenTransceiver = this.publisherPc.addTransceiver('video', { direction: 'sendonly' })
+    this.screenAudioTransceiver = this.publisherPc.addTransceiver('audio', {
+      direction: 'sendonly'
+    })
     return {
       audio: this.audioTransceiver,
       camera: this.cameraTransceiver,
-      screen: this.screenTransceiver
+      screen: this.screenTransceiver,
+      screenAudio: this.screenAudioTransceiver
     }
   }
 
@@ -693,6 +735,7 @@ export class ConferenceClient {
     this.audioTransceiver = null
     this.cameraTransceiver = null
     this.screenTransceiver = null
+    this.screenAudioTransceiver = null
     const slots = this.reservePublisherSlots()
     if (!slots) {
       return
@@ -706,6 +749,9 @@ export class ConferenceClient {
     }
     if (this.localScreenTrack) {
       await slots.screen.sender.replaceTrack(this.localScreenTrack)
+    }
+    if (this.localScreenAudioTrack) {
+      await slots.screenAudio.sender.replaceTrack(this.localScreenAudioTrack)
     }
 
     this.emitDiagnostics()
@@ -726,7 +772,7 @@ export class ConferenceClient {
       'subscriber',
       transportMode
     )
-    this.remoteStreams.clear()
+    this.remoteSlotStreams.clear()
     this.events.onRemoteStreamsReset?.()
     this.emitDiagnostics()
     logInfo('rtc', 'subscriber peer rebuilt', { transportMode })
@@ -831,7 +877,8 @@ export class ConferenceClient {
         type: 'publisher.offer',
         payload: {
           peer: 'publisher',
-          description: offer
+          description: offer,
+          slotBindings: this.buildPublisherSlotBindings()
         }
       })
       this.emitDiagnostics()
@@ -878,50 +925,32 @@ export class ConferenceClient {
         micEnabled: this.localAudioTrack?.enabled ?? false,
         micTrack: Boolean(this.localAudioTrack),
         cameraTrack: Boolean(this.localCameraTrack),
-        screenTrack: Boolean(this.localScreenTrack)
+        screenTrack: Boolean(this.localScreenTrack),
+        screenAudioTrack: Boolean(this.localScreenAudioTrack)
       },
-      remoteStreams: this.remoteStreams.size,
+      remoteSlotStreams: this.remoteSlotStreams.size,
       recentSignalsSent: [...this.recentSignalsSent],
       recentSignalsReceived: [...this.recentSignalsReceived],
       lastError: this.lastError
     })
   }
 
-  private publishLocalStream() {
-    const preferredVideoTrack = this.localScreenTrack ?? this.localCameraTrack
-    const desiredTracks = [this.localAudioTrack, preferredVideoTrack].filter(
-      (track): track is MediaStreamTrack => Boolean(track)
-    )
-
-    if (desiredTracks.length === 0) {
-      logInfo('rtc', 'local preview stream cleared')
-      this.localPreviewStream = null
-      this.events.onLocalStream?.(null)
-      this.publishLocalSlotStream('audio', null)
-      this.publishLocalSlotStream('camera', null)
-      this.publishLocalSlotStream('screen', null)
-      return
-    }
-
-    if (!this.localPreviewStream) {
-      this.localPreviewStream = new MediaStream()
-      logInfo('rtc', 'local preview stream created')
-    }
-
-    syncPreviewTrack(this.localPreviewStream, 'audio', this.localAudioTrack)
-    syncPreviewTrack(this.localPreviewStream, 'video', preferredVideoTrack)
+  private publishLocalSlots() {
     this.publishLocalSlotStream('audio', this.localAudioTrack)
     this.publishLocalSlotStream('camera', this.localCameraTrack)
     this.publishLocalSlotStream('screen', this.localScreenTrack)
-    logInfo('rtc', 'local preview stream published', {
-      trackIds: this.localPreviewStream.getTracks().map((track) => ({
-        id: track.id,
-        kind: track.kind,
-        enabled: track.enabled,
-        readyState: track.readyState
+    this.publishLocalSlotStream('screenAudio', this.localScreenAudioTrack)
+    logInfo('rtc', 'local slot streams published', {
+      slots: [...this.localSlotPreviewStreams.entries()].map(([kind, stream]) => ({
+        kind,
+        trackIds: stream.getTracks().map((track) => ({
+          id: track.id,
+          kind: track.kind,
+          enabled: track.enabled,
+          readyState: track.readyState
+        }))
       }))
     })
-    this.events.onLocalStream?.(this.localPreviewStream)
   }
 
   private publishLocalSlotStream(kind: SlotKind, track: MediaStreamTrack | null) {
@@ -935,6 +964,24 @@ export class ConferenceClient {
     syncPreviewTrack(stream, track.kind as 'audio' | 'video', track)
     this.localSlotPreviewStreams.set(kind, stream)
     this.events.onLocalSlotStream?.(kind, stream)
+  }
+
+  private buildPublisherSlotBindings(): Record<string, SlotKind> {
+    const bindings: Record<string, SlotKind> = {}
+    const slots: Array<readonly [SlotKind, RTCRtpTransceiver | null]> = [
+      ['audio', this.audioTransceiver],
+      ['camera', this.cameraTransceiver],
+      ['screen', this.screenTransceiver],
+      ['screenAudio', this.screenAudioTransceiver]
+    ]
+
+    for (const [kind, transceiver] of slots) {
+      if (transceiver?.mid) {
+        bindings[transceiver.mid] = kind
+      }
+    }
+
+    return bindings
   }
 
   private getPeerConnection(peer: LocalPeerKind) {
@@ -1059,8 +1106,12 @@ function syncPreviewTrack(
   }
 }
 
-function inferSlotKind(kind: string): SlotKind {
-  return kind === 'audio' ? 'audio' : 'camera'
+function parseSlotKind(value: string): SlotKind | null {
+  if (value === 'audio' || value === 'camera' || value === 'screen' || value === 'screenAudio') {
+    return value
+  }
+
+  return null
 }
 
 function describePeer(pc: RTCPeerConnection | null): PeerDiagnostics {

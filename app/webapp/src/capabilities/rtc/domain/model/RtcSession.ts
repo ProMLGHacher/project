@@ -8,7 +8,7 @@ export type RtcConnectionStatus =
 
 export type RtcPeerKind = 'publisher' | 'subscriber'
 
-export type RtcMediaSlotKind = 'audio' | 'camera' | 'screen'
+export type RtcMediaSlotKind = 'audio' | 'camera' | 'screen' | 'screenAudio'
 
 export type RtcMediaSlot = {
   readonly participantId: string
@@ -41,9 +41,7 @@ export type RtcSession = {
   readonly participantId: string
   readonly status: RtcConnectionStatus
   readonly snapshot: RtcRoomSnapshot | null
-  readonly localStream: MediaStream | null
   readonly localMediaStreams: RtcMediaStreams
-  readonly remoteStreams: Readonly<Record<string, MediaStream>>
   readonly remoteMediaStreams: Readonly<Record<string, RtcMediaStreams>>
 }
 

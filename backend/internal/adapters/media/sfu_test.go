@@ -47,8 +47,8 @@ func TestEnsurePublisherCreatesReservedTransceivers(t *testing.T) {
 	}
 
 	transceivers := peer.PC.GetTransceivers()
-	if len(transceivers) != 3 {
-		t.Fatalf("expected audio + camera + screen transceivers, got %d", len(transceivers))
+	if len(transceivers) != 4 {
+		t.Fatalf("expected audio + camera + screen + screenAudio transceivers, got %d", len(transceivers))
 	}
 }
 
@@ -130,15 +130,13 @@ func TestAttachExistingSourcesEmitsSubscriberOffer(t *testing.T) {
 	}
 }
 
-func TestUpdateSlotPreferenceKeepsExistingVideoSourceWhenCameraTurnsOff(t *testing.T) {
+func TestUpdateSlotPreferenceUnpublishesVideoSourceWhenCameraTurnsOff(t *testing.T) {
 	api := newTestAPI()
 	sfu := NewSFU(api, newStubEmitter(), stubLookup{})
 
-	publisher, err := sfu.EnsurePublisher("room-1", "participant-1")
-	if err != nil {
+	if _, err := sfu.EnsurePublisher("room-1", "participant-1"); err != nil {
 		t.Fatalf("expected ensure publisher to succeed, got %v", err)
 	}
-	publisher.DesiredSlots[domain.SlotCamera] = true
 	sfu.sources[participantSlotKey{ParticipantID: "participant-1", Kind: domain.SlotCamera}] = &SourceTrack{
 		RoomID:        "room-1",
 		ParticipantID: "participant-1",
@@ -149,8 +147,8 @@ func TestUpdateSlotPreferenceKeepsExistingVideoSourceWhenCameraTurnsOff(t *testi
 		t.Fatalf("expected disable slot to succeed, got %v", err)
 	}
 
-	if _, exists := sfu.sources[participantSlotKey{ParticipantID: "participant-1", Kind: domain.SlotCamera}]; !exists {
-		t.Fatalf("expected reserved camera source to stay published for later resume")
+	if _, exists := sfu.sources[participantSlotKey{ParticipantID: "participant-1", Kind: domain.SlotCamera}]; exists {
+		t.Fatalf("expected disabled camera source to be unpublished")
 	}
 }
 
@@ -158,11 +156,9 @@ func TestUpdateSlotPreferenceKeepsAudioSourceWhenMuted(t *testing.T) {
 	api := newTestAPI()
 	sfu := NewSFU(api, newStubEmitter(), stubLookup{})
 
-	publisher, err := sfu.EnsurePublisher("room-1", "participant-1")
-	if err != nil {
+	if _, err := sfu.EnsurePublisher("room-1", "participant-1"); err != nil {
 		t.Fatalf("expected ensure publisher to succeed, got %v", err)
 	}
-	publisher.DesiredSlots[domain.SlotAudio] = true
 	sfu.sources[participantSlotKey{ParticipantID: "participant-1", Kind: domain.SlotAudio}] = &SourceTrack{
 		RoomID:        "room-1",
 		ParticipantID: "participant-1",
