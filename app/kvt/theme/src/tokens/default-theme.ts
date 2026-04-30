@@ -36,7 +36,7 @@ export const defaultKvtTheme: KvtTheme = {
     primaryForeground: 'oklch(16.8% 0.01 286)',
     background: 'oklch(17.5% 0.015 286)',
     foreground: 'oklch(95.2% 0.01 286)',
-    surface: 'oklch(22.2% 0.018 286)',
+    surface: 'oklch(18.5% 0.012 258)',
     surfaceForeground: 'oklch(95.2% 0.01 286)',
     muted: 'oklch(27.7% 0.017 286)',
     mutedForeground: 'oklch(77.8% 0.014 286)',
@@ -79,12 +79,12 @@ export const defaultKvtTheme: KvtTheme = {
   },
   shapes: {
     radius: {
-      xs: '0.375rem',
-      sm: '0.5rem',
-      md: '0.75rem',
-      lg: '1rem',
-      xl: '1.25rem',
-      '2xl': '1.5rem'
+      xs: '0.25rem',
+      sm: '0.375rem',
+      md: '0.5rem',
+      lg: '0.75rem',
+      xl: '0.875rem',
+      '2xl': '1rem'
     }
   }
 }

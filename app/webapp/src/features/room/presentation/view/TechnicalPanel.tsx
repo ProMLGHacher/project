@@ -20,10 +20,10 @@ export function TechnicalPanel({
   t
 }: TechnicalPanelProps) {
   return (
-    <div className={cn('min-h-0 rounded-[1.75rem]', className)}>
+    <div className={cn('min-h-0 rounded-lg', className)}>
       <div className="grid h-full gap-4">
         <div>
-          <h3 className="text-base font-semibold text-white">{t('room.tech.title')}</h3>
+          <h3 className="text-base font-semibold text-foreground">{t('room.tech.title')}</h3>
         </div>
 
         {diagnostics ? (
@@ -40,10 +40,10 @@ export function TechnicalPanel({
         )}
 
         <div className="mt-auto grid gap-2 sm:grid-cols-2">
-          <Button className="rounded-full" onClick={onExportLogs} type="button" variant="outline">
+          <Button className="rounded-md" onClick={onExportLogs} type="button" variant="outline">
             {t('room.tech.export')}
           </Button>
-          <Button className="rounded-full" onClick={onClearLogs} type="button" variant="ghost">
+          <Button className="rounded-md" onClick={onClearLogs} type="button" variant="ghost">
             {t('room.tech.clear')}
           </Button>
         </div>
@@ -60,9 +60,9 @@ function DiagnosticGroup({
   readonly values: readonly string[]
 }) {
   return (
-    <div className="rounded-2xl bg-white/8 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{title}</p>
-      <ul className="mt-2 grid gap-1 text-xs text-slate-300">
+    <div className="rounded-md bg-muted p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <ul className="mt-2 grid gap-1 text-xs text-muted-foreground">
         {values.map((value) => (
           <li key={value}>{value}</li>
         ))}

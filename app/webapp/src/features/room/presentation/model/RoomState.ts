@@ -19,6 +19,9 @@ export type RoomChatState = {
   readonly unreadCount: number
   readonly lastReadMessageId: string | null
   readonly replyToId: string | null
+  readonly editingMessageId: string | null
+  readonly editingDraft: string
+  readonly highlightedMessageId: string | null
   readonly error: string | null
 }
 
@@ -61,10 +64,17 @@ export type RoomUiAction =
   | { readonly type: 'settings-closed' }
   | { readonly type: 'chat-draft-changed'; readonly value: string }
   | { readonly type: 'chat-message-sent' }
+  | { readonly type: 'chat-latest-visible' }
   | { readonly type: 'chat-file-selected'; readonly file: File }
   | { readonly type: 'chat-reaction-toggled'; readonly messageId: string; readonly emoji: string }
   | { readonly type: 'chat-reply-started'; readonly messageId: string }
+  | { readonly type: 'chat-reply-preview-pressed'; readonly messageId: string }
   | { readonly type: 'chat-reply-cancelled' }
+  | { readonly type: 'chat-edit-started'; readonly messageId: string }
+  | { readonly type: 'chat-edit-cancelled' }
+  | { readonly type: 'chat-edit-draft-changed'; readonly value: string }
+  | { readonly type: 'chat-edit-submitted'; readonly messageId: string }
+  | { readonly type: 'chat-message-deleted'; readonly messageId: string }
 
 export type RoomUiEffect =
   | { readonly type: 'navigate-home' }
@@ -104,6 +114,9 @@ export const initialRoomState: RoomUiState = {
     unreadCount: 0,
     lastReadMessageId: null,
     replyToId: null,
+    editingMessageId: null,
+    editingDraft: '',
+    highlightedMessageId: null,
     error: null
   }
 }

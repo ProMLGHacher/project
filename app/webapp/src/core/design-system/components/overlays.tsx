@@ -1,4 +1,5 @@
-import { useEffect, type HTMLAttributes } from 'react'
+import { useEffect, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../utils'
 
 export function Dialog({
@@ -133,6 +134,126 @@ export function DropdownMenu({ className, ...props }: HTMLAttributes<HTMLDivElem
 }
 
 export const ContextMenu = DropdownMenu
+
+export type ContextMenuPosition = {
+  readonly x: number
+  readonly y: number
+}
+
+export function ContextMenuRoot({
+  children,
+  onClose,
+  open
+}: {
+  readonly children: ReactNode
+  readonly onClose: () => void
+  readonly open: boolean
+}) {
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const close = () => onClose()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('pointerdown', close)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('pointerdown', close)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose, open])
+
+  if (!open || typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(children, document.body)
+}
+
+export function ContextMenuContent({
+  className,
+  position,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
+  readonly position: ContextMenuPosition
+}) {
+  return (
+    <div
+      role="menu"
+      className={cn(
+        'fixed z-50 grid min-w-44 gap-1 rounded-lg border border-border bg-surface p-2 text-foreground shadow-lg',
+        className
+      )}
+      style={{
+        left: Math.max(8, Math.min(position.x, window.innerWidth - 220)),
+        top: Math.max(8, Math.min(position.y, window.innerHeight - 240))
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      {...props}
+    />
+  )
+}
+
+export function ContextMenuItem({
+  className,
+  destructive = false,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  readonly destructive?: boolean
+}) {
+  return (
+    <button
+      role="menuitem"
+      className={cn(
+        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted',
+        destructive && 'text-destructive hover:bg-destructive/10',
+        className
+      )}
+      type="button"
+      {...props}
+    />
+  )
+}
+
+export function ContextMenuSeparator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('my-1 h-px bg-border', className)} {...props} />
+}
+
+export function ContextMenuReactionBar({
+  className,
+  onReaction,
+  reactions
+}: {
+  readonly className?: string
+  readonly onReaction: (reaction: string) => void
+  readonly reactions: readonly string[]
+}) {
+  return (
+    <div className={cn('flex items-center gap-1 px-1 py-1', className)}>
+      {reactions.map((reaction) => (
+        <button
+          key={reaction}
+          className="grid size-8 place-items-center rounded-md text-base transition-colors hover:bg-muted"
+          type="button"
+          onClick={() => onReaction(reaction)}
+        >
+          {reaction}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function MenuItem({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (

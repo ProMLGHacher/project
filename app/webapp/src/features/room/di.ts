@@ -1,7 +1,9 @@
 import { Inject, Module, Provides, ViewModelProvider, createModuleFromClass } from '@kvt/core'
 import { ClearClientLogsUseCase } from '@capabilities/client-logs/domain/usecases/ClearClientLogsUseCase'
 import { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
+import { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
 import { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
+import { EditChatMessageUseCase } from '@capabilities/chat/domain/usecases/EditChatMessageUseCase'
 import { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
 import { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
 import { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
@@ -121,6 +123,8 @@ class RoomModule {
     @Inject(SendChatMessageUseCase) sendChatMessage: SendChatMessageUseCase,
     @Inject(MarkChatReadUseCase) markChatRead: MarkChatReadUseCase,
     @Inject(ToggleChatReactionUseCase) toggleChatReaction: ToggleChatReactionUseCase,
+    @Inject(EditChatMessageUseCase) editChatMessage: EditChatMessageUseCase,
+    @Inject(DeleteChatMessageUseCase) deleteChatMessage: DeleteChatMessageUseCase,
     @Inject(UploadChatAttachmentUseCase) uploadChatAttachment: UploadChatAttachmentUseCase
   ) {
     return new RoomViewModel(
@@ -148,6 +152,8 @@ class RoomModule {
       sendChatMessage,
       markChatRead,
       toggleChatReaction,
+      editChatMessage,
+      deleteChatMessage,
       uploadChatAttachment
     )
   }

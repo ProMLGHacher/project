@@ -15,22 +15,35 @@ export type ParticipantMediaTile = {
   readonly awaitingMedia: boolean
 }
 
+export type LocalParticipantSlotState = {
+  readonly audio: boolean
+  readonly camera: boolean
+  readonly screen: boolean
+}
+
 export function buildParticipantTiles(
   participants: readonly Participant[],
   localParticipantId: string | null,
   localMediaStreams: RtcMediaStreams,
-  remoteMediaStreams: Readonly<Record<string, RtcMediaStreams>>
+  remoteMediaStreams: Readonly<Record<string, RtcMediaStreams>>,
+  localSlotState: LocalParticipantSlotState
 ): ParticipantMediaTile[] {
   const tiles: ParticipantMediaTile[] = []
 
   for (const participant of participants) {
     const local = participant.id === localParticipantId
     const mediaStreams = local ? localMediaStreams : (remoteMediaStreams[participant.id] ?? {})
-    const audioOn = slotEnabled(participant, 'audio')
-    const cameraOn = slotEnabled(participant, 'camera')
-    const screenOn = slotEnabled(participant, 'screen')
     const cameraStream = mediaStreams.camera ?? null
     const screenStream = mediaStreams.screen ?? null
+    const audioOn = local
+      ? localSlotState.audio || Boolean(mediaStreams.audio)
+      : slotEnabled(participant, 'audio')
+    const cameraOn = local
+      ? localSlotState.camera || Boolean(cameraStream)
+      : slotEnabled(participant, 'camera')
+    const screenOn = local
+      ? localSlotState.screen || Boolean(screenStream)
+      : slotEnabled(participant, 'screen')
 
     if (cameraOn || cameraStream) {
       tiles.push({

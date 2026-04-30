@@ -47,12 +47,14 @@ export function RoomFloatingPanel({
 
   return (
     <div className="pointer-events-none fixed bottom-24 right-3 z-20 w-[calc(100vw-1.5rem)] max-w-sm sm:right-4 md:bottom-24">
-      <Card className="pointer-events-auto animate-panel-in max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden rounded-[1.75rem] border-white/10 bg-slate-950/92 text-white shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <Card className="pointer-events-auto animate-panel-in max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden rounded-lg border-border bg-surface text-foreground shadow-2xl">
         <CardContent className="grid max-h-[inherit] gap-4 overflow-y-auto p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-white">{t(panelTitle(activePanel))}</h2>
-              <p className="mt-1 text-sm text-slate-300">{t(actionStatus)}</p>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t(panelTitle(activePanel))}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t(actionStatus)}</p>
             </div>
             <IconButton label={t('room.panels.close')} onClick={onClose}>
               <CloseIcon />
@@ -113,18 +115,18 @@ function ParticipantsPanel({
         return (
           <div
             key={participant.id}
-            className="flex items-center gap-3 rounded-2xl bg-white/8 px-3 py-2"
+            className="flex items-center gap-3 rounded-md bg-muted px-3 py-2"
           >
-            <div className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-semibold">
+            <div className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
               {participant.displayName.slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{participant.displayName}</p>
-              <p className="truncate text-xs text-slate-400">
+              <p className="truncate text-xs text-muted-foreground">
                 {t(`room.participant.roles.${participant.role}`)}
               </p>
             </div>
-            <div className="flex items-center gap-1 text-slate-300">
+            <div className="flex items-center gap-1 text-muted-foreground">
               {micOn ? <MicIcon /> : <MicOffIcon />}
               {cameraOn ? <CameraIcon /> : <CameraOffIcon />}
             </div>
@@ -160,9 +162,11 @@ function RoomInfoPanel({
 
 function InfoRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
-    <div className="rounded-2xl bg-white/8 p-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-white">{value}</p>
+    <div className="rounded-md bg-muted p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
 }

@@ -5,7 +5,9 @@ import type { ObserveVoiceActivityUseCase } from '@capabilities/voice-activity/d
 import type { StopVoiceActivityUseCase } from '@capabilities/voice-activity/domain/usecases/StopVoiceActivityUseCase'
 import type { UpdateVoiceActivitySourcesUseCase } from '@capabilities/voice-activity/domain/usecases/UpdateVoiceActivitySourcesUseCase'
 import type { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
+import type { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
 import type { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
+import type { EditChatMessageUseCase } from '@capabilities/chat/domain/usecases/EditChatMessageUseCase'
 import type { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
 import type { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
 import type { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
@@ -65,6 +67,7 @@ export class RoomViewModel extends ViewModel {
 
   private latestDiagnostics: RtcDiagnostics | null = null
   private lastConferenceSoundParticipants: readonly Participant[] | null = null
+  private chatHighlightTimer: number | null = null
 
   // Guard-ы не дают старым async-ответам перезаписать состояние уже другой комнаты.
   private readonly requestGuards = new RoomRequestGuards()
@@ -97,6 +100,8 @@ export class RoomViewModel extends ViewModel {
     private readonly sendChatMessageUseCase: SendChatMessageUseCase,
     private readonly markChatReadUseCase: MarkChatReadUseCase,
     private readonly toggleChatReactionUseCase: ToggleChatReactionUseCase,
+    private readonly editChatMessageUseCase: EditChatMessageUseCase,
+    private readonly deleteChatMessageUseCase: DeleteChatMessageUseCase,
     private readonly uploadChatAttachmentUseCase: UploadChatAttachmentUseCase
   ) {
     super()
@@ -119,7 +124,9 @@ export class RoomViewModel extends ViewModel {
       this.observeRoomDiagnosticsUseCase.execute().subscribe((diagnostics) => {
         this.latestDiagnostics = diagnostics
 
-        this.updateState((state) => this.withDiagnostics(state, null))
+        this.updateState((state) =>
+          state.activePanel === 'techInfo' ? this.withDiagnostics(state, null) : state
+        )
       })
     )
 
@@ -183,14 +190,19 @@ export class RoomViewModel extends ViewModel {
         void this.leaveRoom()
         break
       case 'panel-toggled':
-        this.updateState((state) => ({
-          ...state,
-          activePanel: state.activePanel === event.panel ? null : event.panel,
-          chat: {
-            ...state.chat,
-            open: event.panel === 'chat' ? state.activePanel !== 'chat' : state.chat.open
+        this.updateState((state) => {
+          const activePanel = state.activePanel === event.panel ? null : event.panel
+          const nextState = {
+            ...state,
+            activePanel,
+            chat: {
+              ...state.chat,
+              open: event.panel === 'chat' ? state.activePanel !== 'chat' : state.chat.open
+            }
           }
-        }))
+
+          return activePanel === 'techInfo' ? this.withDiagnostics(nextState, null) : nextState
+        })
         if (event.panel === 'chat') {
           void this.markLatestChatMessageRead()
         }
@@ -220,6 +232,9 @@ export class RoomViewModel extends ViewModel {
       case 'chat-message-sent':
         void this.sendChatMessage()
         break
+      case 'chat-latest-visible':
+        void this.markLatestChatMessageRead()
+        break
       case 'chat-file-selected':
         void this.uploadChatAttachment(event.file)
         break
@@ -232,8 +247,32 @@ export class RoomViewModel extends ViewModel {
           chat: { ...state.chat, replyToId: event.messageId }
         }))
         break
+      case 'chat-reply-preview-pressed':
+        this.highlightChatMessage(event.messageId)
+        break
       case 'chat-reply-cancelled':
         this.updateState((state) => ({ ...state, chat: { ...state.chat, replyToId: null } }))
+        break
+      case 'chat-edit-started':
+        this.startChatEdit(event.messageId)
+        break
+      case 'chat-edit-cancelled':
+        this.updateState((state) => ({
+          ...state,
+          chat: { ...state.chat, editingMessageId: null, editingDraft: '' }
+        }))
+        break
+      case 'chat-edit-draft-changed':
+        this.updateState((state) => ({
+          ...state,
+          chat: { ...state.chat, editingDraft: event.value }
+        }))
+        break
+      case 'chat-edit-submitted':
+        void this.submitChatEdit(event.messageId)
+        break
+      case 'chat-message-deleted':
+        void this.deleteChatMessage(event.messageId)
         break
       default:
         throw new Error(`Unknown event: ${JSON.stringify(event)}`)
@@ -260,6 +299,10 @@ export class RoomViewModel extends ViewModel {
     this.requestGuards.invalidate('enterRoom', 'connectRoom', 'microphone', 'camera', 'screenShare')
     this.latestDiagnostics = null
     this.lastConferenceSoundParticipants = null
+    if (this.chatHighlightTimer) {
+      window.clearTimeout(this.chatHighlightTimer)
+      this.chatHighlightTimer = null
+    }
     this.stopVoiceActivityUseCase.execute()
     this.disconnectChatUseCase.execute()
 
@@ -593,7 +636,7 @@ export class RoomViewModel extends ViewModel {
   private async sendChatMessage() {
     const chat = this.state.value.chat
     const markdown = chat.draft.trim()
-    if (!markdown) {
+    if (!markdown && chat.pendingAttachments.length === 0) {
       return
     }
 
@@ -614,6 +657,7 @@ export class RoomViewModel extends ViewModel {
         chat: {
           ...state.chat,
           draft: markdown,
+          pendingAttachments: chat.pendingAttachments,
           error: result.error.message ?? result.error.type
         }
       }))
@@ -652,6 +696,79 @@ export class RoomViewModel extends ViewModel {
       ...state,
       chat: { ...state.chat, lastReadMessageId: latest.id, unreadCount: 0 }
     }))
+  }
+
+  private startChatEdit(messageId: string) {
+    const message = this.state.value.chat.messages.find((item) => item.id === messageId)
+    if (!message || message.author.id !== this.state.value.localParticipantId || message.deletedAt) {
+      return
+    }
+
+    this.updateState((state) => ({
+      ...state,
+      chat: {
+        ...state.chat,
+        editingMessageId: messageId,
+        editingDraft: message.bodyMarkdown,
+        replyToId: null
+      }
+    }))
+  }
+
+  private async submitChatEdit(messageId: string) {
+    const draft = this.state.value.chat.editingDraft.trim()
+    if (!draft) {
+      return
+    }
+
+    const result = await this.editChatMessageUseCase.execute(messageId, draft)
+    if (!result.ok) {
+      this.updateState((state) => ({
+        ...state,
+        chat: { ...state.chat, error: result.error.message ?? result.error.type }
+      }))
+      return
+    }
+
+    this.updateState((state) => ({
+      ...state,
+      chat: { ...state.chat, editingMessageId: null, editingDraft: '', error: null }
+    }))
+  }
+
+  private async deleteChatMessage(messageId: string) {
+    const message = this.state.value.chat.messages.find((item) => item.id === messageId)
+    if (!message || message.author.id !== this.state.value.localParticipantId) {
+      return
+    }
+
+    const result = await this.deleteChatMessageUseCase.execute(messageId)
+    if (!result.ok) {
+      this.updateState((state) => ({
+        ...state,
+        chat: { ...state.chat, error: result.error.message ?? result.error.type }
+      }))
+    }
+  }
+
+  private highlightChatMessage(messageId: string) {
+    if (this.chatHighlightTimer) {
+      window.clearTimeout(this.chatHighlightTimer)
+    }
+
+    this.updateState((state) => ({
+      ...state,
+      chat: { ...state.chat, highlightedMessageId: messageId }
+    }))
+
+    this.chatHighlightTimer = window.setTimeout(() => {
+      this.chatHighlightTimer = null
+      this.updateState((state) =>
+        state.chat.highlightedMessageId === messageId
+          ? { ...state, chat: { ...state.chat, highlightedMessageId: null } }
+          : state
+      )
+    }, 1500)
   }
 
   private applyObservedSession(state: RoomUiState, session: RtcSession): RoomUiState {
@@ -749,6 +866,9 @@ export class RoomViewModel extends ViewModel {
         unreadCount: 0,
         lastReadMessageId: null,
         replyToId: null,
+        editingMessageId: null,
+        editingDraft: '',
+        highlightedMessageId: null,
         error: null,
         status: 'idle'
       },

@@ -115,6 +115,24 @@ export class BrowserChatRepository implements ChatRepository {
       return err({ type: 'unknown-error', message: readableError(error) })
     }
   }
+
+  async editMessage(messageId: string, markdown: string): PromiseResult<void, ChatError> {
+    try {
+      await this.client.editMessage(messageId, markdown)
+      return ok()
+    } catch (error) {
+      return err({ type: 'unknown-error', message: readableError(error) })
+    }
+  }
+
+  async deleteMessage(messageId: string): PromiseResult<void, ChatError> {
+    try {
+      await this.client.deleteMessage(messageId)
+      return ok()
+    } catch (error) {
+      return err({ type: 'unknown-error', message: readableError(error) })
+    }
+  }
 }
 
 export function renderChatMarkdown(markdown: string): string {

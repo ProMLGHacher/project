@@ -247,7 +247,7 @@ func (s *Service) SendMessage(ctx context.Context, claims ChatTokenClaims, chann
 		return domain.Message{}, ErrForbidden
 	}
 	body := strings.TrimSpace(markdown)
-	if body == "" {
+	if body == "" && len(attachments) == 0 {
 		return domain.Message{}, ErrInvalidBody
 	}
 	for _, attachment := range attachments {

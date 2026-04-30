@@ -188,7 +188,7 @@ func (s *Store) SendMessage(ctx context.Context, claims chatapp.ChatTokenClaims,
 		return domain.Message{}, chatapp.ErrForbidden
 	}
 	body := strings.TrimSpace(markdown)
-	if body == "" {
+	if body == "" && len(attachments) == 0 {
 		return domain.Message{}, chatapp.ErrInvalidBody
 	}
 	tx, err := s.pool.Begin(ctx)

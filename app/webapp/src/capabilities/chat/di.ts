@@ -2,7 +2,9 @@ import { Inject, Module, Provides, Singleton, createModuleFromClass } from '@kvt
 import { BrowserChatRepository } from './data/repository/BrowserChatRepository'
 import { chatRepositoryToken } from './domain/repository/tokens'
 import { ConnectChatUseCase } from './domain/usecases/ConnectChatUseCase'
+import { DeleteChatMessageUseCase } from './domain/usecases/DeleteChatMessageUseCase'
 import { DisconnectChatUseCase } from './domain/usecases/DisconnectChatUseCase'
+import { EditChatMessageUseCase } from './domain/usecases/EditChatMessageUseCase'
 import { MarkChatReadUseCase } from './domain/usecases/MarkChatReadUseCase'
 import { ObserveChatUseCase } from './domain/usecases/ObserveChatUseCase'
 import { SendChatMessageUseCase } from './domain/usecases/SendChatMessageUseCase'
@@ -46,6 +48,16 @@ class ChatCapabilityModule {
   @Provides(ToggleChatReactionUseCase)
   static provideToggleChatReactionUseCase(@Inject(chatRepositoryToken) repository: ChatRepository) {
     return new ToggleChatReactionUseCase(repository)
+  }
+
+  @Provides(EditChatMessageUseCase)
+  static provideEditChatMessageUseCase(@Inject(chatRepositoryToken) repository: ChatRepository) {
+    return new EditChatMessageUseCase(repository)
+  }
+
+  @Provides(DeleteChatMessageUseCase)
+  static provideDeleteChatMessageUseCase(@Inject(chatRepositoryToken) repository: ChatRepository) {
+    return new DeleteChatMessageUseCase(repository)
   }
 
   @Provides(UploadChatAttachmentUseCase)

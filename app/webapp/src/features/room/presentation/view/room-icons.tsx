@@ -16,8 +16,8 @@ export function IconButton({
     <button
       aria-label={label}
       className={cn(
-        'inline-flex size-10 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-100',
-        active ? 'bg-primary text-primary-foreground' : 'bg-white/10 hover:bg-white/18'
+        'inline-flex size-10 items-center justify-center rounded-full text-foreground transition hover:scale-105 active:scale-100',
+        active ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent'
       )}
       onClick={onClick}
       title={label}

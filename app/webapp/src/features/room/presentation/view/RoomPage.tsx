@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useSharedFlow, useStateFlow, useViewModel, type PropsWithVM } from '@kvt/react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +20,68 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
   const uiState = useStateFlow(viewModel.uiState)
   const toasts = useToast()
   const { t } = useTranslation('voice')
+  const localSlotState = useMemo(
+    () => ({
+      audio: uiState.microphone.enabled,
+      camera: uiState.camera.enabled,
+      screen: uiState.screenShare.enabled
+    }),
+    [uiState.camera.enabled, uiState.microphone.enabled, uiState.screenShare.enabled]
+  )
+  const onPin = useCallback(
+    (tileId: string) => viewModel.onEvent({ type: 'tile-pin-toggled', tileId }),
+    [viewModel]
+  )
+  const onChatDraftChange = useCallback(
+    (value: string) => viewModel.onEvent({ type: 'chat-draft-changed', value }),
+    [viewModel]
+  )
+  const onChatReaction = useCallback(
+    (messageId: string, emoji: string) =>
+      viewModel.onEvent({ type: 'chat-reaction-toggled', messageId, emoji }),
+    [viewModel]
+  )
+  const onChatReply = useCallback(
+    (messageId: string) => viewModel.onEvent({ type: 'chat-reply-started', messageId }),
+    [viewModel]
+  )
+  const onChatReplyPreview = useCallback(
+    (messageId: string) => viewModel.onEvent({ type: 'chat-reply-preview-pressed', messageId }),
+    [viewModel]
+  )
+  const onChatReplyCancel = useCallback(
+    () => viewModel.onEvent({ type: 'chat-reply-cancelled' }),
+    [viewModel]
+  )
+  const onChatSend = useCallback(() => viewModel.onEvent({ type: 'chat-message-sent' }), [viewModel])
+  const onChatLatestVisible = useCallback(
+    () => viewModel.onEvent({ type: 'chat-latest-visible' }),
+    [viewModel]
+  )
+  const onChatFileSelected = useCallback(
+    (file: File) => viewModel.onEvent({ type: 'chat-file-selected', file }),
+    [viewModel]
+  )
+  const onChatEdit = useCallback(
+    (messageId: string) => viewModel.onEvent({ type: 'chat-edit-started', messageId }),
+    [viewModel]
+  )
+  const onChatEditCancel = useCallback(
+    () => viewModel.onEvent({ type: 'chat-edit-cancelled' }),
+    [viewModel]
+  )
+  const onChatEditDraftChange = useCallback(
+    (value: string) => viewModel.onEvent({ type: 'chat-edit-draft-changed', value }),
+    [viewModel]
+  )
+  const onChatEditSubmit = useCallback(
+    (messageId: string) => viewModel.onEvent({ type: 'chat-edit-submitted', messageId }),
+    [viewModel]
+  )
+  const onChatDelete = useCallback(
+    (messageId: string) => viewModel.onEvent({ type: 'chat-message-deleted', messageId }),
+    [viewModel]
+  )
 
   useEffect(() => {
     viewModel.onEvent({ type: 'room-opened', roomId })
@@ -41,7 +103,7 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
   })
 
   return (
-    <section className="relative mx-auto flex min-h-screen w-full flex-col px-2 py-2 sm:px-3 md:px-4">
+    <section className="relative mx-auto flex h-dvh min-h-0 w-full flex-col overflow-hidden px-2 py-2 sm:px-3 md:px-4">
       {uiState.error ? (
         <RoomErrorState
           actionLabel={t(uiState.error.actionLabel)}
@@ -51,35 +113,37 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
         />
       ) : (
         <>
-          <div className="grid min-h-0 flex-1 gap-3 pb-8 transition-[grid-template-columns] duration-300 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid min-h-0 flex-1 gap-3 transition-[grid-template-columns] duration-300 lg:grid-cols-[minmax(0,1fr)_auto]">
             <ConferenceStage
               key={`stage:${roomId}`}
               localMediaStreams={uiState.localMediaStreams}
               localParticipantId={uiState.localParticipantId}
+              localSlotState={localSlotState}
               participants={uiState.participants}
               pinnedTileId={uiState.pinnedTileId}
               remoteMediaStreams={uiState.remoteMediaStreams}
               speakingParticipantIds={uiState.speakingParticipantIds}
               t={t}
-              onPin={(tileId) => viewModel.onEvent({ type: 'tile-pin-toggled', tileId })}
+              onPin={onPin}
             />
             {uiState.chat.open && (
               <RoomChatPanel
                 chat={uiState.chat}
                 localParticipantId={uiState.localParticipantId}
                 t={t}
-                onDraftChange={(value) => viewModel.onEvent({ type: 'chat-draft-changed', value })}
-                onReaction={(messageId, emoji) =>
-                  viewModel.onEvent({ type: 'chat-reaction-toggled', messageId, emoji })
-                }
-                onReply={(messageId) =>
-                  viewModel.onEvent({ type: 'chat-reply-started', messageId })
-                }
-                onReplyCancel={() => viewModel.onEvent({ type: 'chat-reply-cancelled' })}
-                onSend={() => viewModel.onEvent({ type: 'chat-message-sent' })}
-                onFileSelected={(file) =>
-                  viewModel.onEvent({ type: 'chat-file-selected', file })
-                }
+                onDelete={onChatDelete}
+                onDraftChange={onChatDraftChange}
+                onEdit={onChatEdit}
+                onEditCancel={onChatEditCancel}
+                onEditDraftChange={onChatEditDraftChange}
+                onEditSubmit={onChatEditSubmit}
+                onFileSelected={onChatFileSelected}
+                onLatestVisible={onChatLatestVisible}
+                onReaction={onChatReaction}
+                onReply={onChatReply}
+                onReplyCancel={onChatReplyCancel}
+                onReplyPreview={onChatReplyPreview}
+                onSend={onChatSend}
               />
             )}
           </div>

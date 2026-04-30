@@ -27,7 +27,7 @@ export function BottomDock({
   t
 }: BottomDockProps) {
   return (
-    <Card className="animate-panel-in rounded-full border-white/10 bg-slate-950/90 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+    <Card className="animate-panel-in rounded-full border-border bg-surface text-foreground shadow-2xl">
       <CardContent className="flex items-center justify-center gap-2 p-2">
         <DockButton
           active={microphoneEnabled}
@@ -83,12 +83,12 @@ function DockButton({
     <button
       aria-label={label}
       className={cn(
-        'inline-flex size-12 items-center justify-center rounded-full text-white transition duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-13',
+        'inline-flex size-12 items-center justify-center rounded-full text-foreground transition duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-13',
         variant === 'danger' || (!active && variant === 'media')
           ? 'bg-destructive text-on-feedback shadow-lg shadow-destructive/25 hover:opacity-95'
           : variant === 'activeShare'
             ? 'bg-info text-on-feedback shadow-lg shadow-info/25'
-            : 'bg-white/12 hover:bg-white/18'
+            : 'bg-muted hover:bg-accent'
       )}
       onClick={onClick}
       title={label}

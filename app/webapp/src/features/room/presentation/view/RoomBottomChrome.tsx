@@ -38,9 +38,9 @@ export function RoomBottomChrome({
   t
 }: RoomBottomChromeProps) {
   return (
-    <div className="pointer-events-none sticky bottom-3 z-30 mx-auto grid w-full max-w-400 gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+    <div className="pointer-events-none z-30 mx-auto grid w-full max-w-400 gap-3 pt-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <div className="pointer-events-auto flex h-full min-w-0 items-center justify-center md:justify-start">
-        <div className="flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-slate-950/88 p-2 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <div className="flex max-w-full items-center gap-2 rounded-full border border-border bg-surface p-2 text-foreground shadow-2xl">
           <div className="min-w-0 px-3">
             <p className="truncate text-sm font-semibold">{roomId || t('room.header.untitled')}</p>
           </div>
@@ -67,7 +67,7 @@ export function RoomBottomChrome({
       </div>
 
       <div className="pointer-events-auto flex justify-center md:items-center md:justify-end">
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/88 p-2 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <div className="flex items-center gap-2 rounded-full border border-border bg-surface p-2 text-foreground shadow-2xl">
           <IconButton
             active={activePanel === 'chat'}
             label={t('room.panels.chat')}
