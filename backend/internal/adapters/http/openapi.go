@@ -166,6 +166,39 @@ var openAPISpec = mustMarshalOpenAPI(map[string]any{
 				},
 			},
 		},
+		"/api/rooms/{roomId}/chat/session": map[string]any{
+			"post": map[string]any{
+				"tags":        []any{"Rooms"},
+				"summary":     "Create a chat-only room session",
+				"description": "Creates a Chat Service session for the room without creating an RMS participant/session. This is used by the home recent chat drawer, where opening chat must not add a conference participant.",
+				"operationId": "createRoomChatSession",
+				"parameters":  []any{roomIDParameter()},
+				"requestBody": map[string]any{
+					"required": true,
+					"content": map[string]any{
+						"application/json": map[string]any{
+							"schema": ref("#/components/schemas/ChatSessionRequest"),
+							"examples": map[string]any{
+								"default": map[string]any{
+									"summary": "Open room chat from outside the conference.",
+									"value": map[string]any{
+										"displayName": "Araik",
+										"role":        "participant",
+									},
+								},
+							},
+						},
+					},
+				},
+				"responses": map[string]any{
+					"200": response("Chat-only bootstrap data.", "#/components/schemas/ChatSessionResponse"),
+					"400": errorResponse("Request JSON is invalid."),
+					"404": errorResponse("Room id was not found."),
+					"502": errorResponse("Chat Service session could not be created."),
+					"503": errorResponse("Chat Service is not configured."),
+				},
+			},
+		},
 		"/api/invites/{token}": map[string]any{
 			"get": map[string]any{
 				"tags":        []any{"Invites"},
@@ -394,6 +427,27 @@ func schemas() map[string]any {
 				},
 			},
 		},
+		"ChatSessionRequest": map[string]any{
+			"type":                 "object",
+			"additionalProperties": false,
+			"required":             []any{"displayName"},
+			"properties": map[string]any{
+				"displayName": map[string]any{
+					"type":        "string",
+					"description": "Name used for this chat session.",
+					"minLength":   1,
+					"maxLength":   80,
+					"example":     "Araik",
+				},
+				"role": map[string]any{
+					"type":        "string",
+					"description": "Optional chat role requested by the product app.",
+					"enum":        []any{"host", "participant"},
+					"default":     "participant",
+					"example":     "participant",
+				},
+			},
+		},
 		"RoomMetadata": map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,
@@ -516,6 +570,19 @@ func schemas() map[string]any {
 					"items":       ref("#/components/schemas/ICEServerConfig"),
 				},
 				"snapshot": ref("#/components/schemas/RoomSnapshot"),
+			},
+		},
+		"ChatSessionResponse": map[string]any{
+			"type":                 "object",
+			"additionalProperties": false,
+			"required":             []any{"chatUrl", "chatToken", "chatSpaceId", "chatChannelId", "participantId"},
+			"description":          "Chat-only bootstrap payload. It intentionally does not contain RMS joinToken/wsUrl/iceServers, because this flow must not join the conference media room.",
+			"properties": map[string]any{
+				"chatUrl":       stringSchema("Public Chat Service base URL.", "https://kvatum.ru"),
+				"chatToken":     stringSchema("Short-lived server-issued token used to connect to Chat Service.", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."),
+				"chatSpaceId":   stringSchema("Chat space id mapped to the product room.", "clear-sun-37"),
+				"chatChannelId": stringSchema("Conference chat channel id.", "clear-sun-37:conference"),
+				"participantId": stringSchema("Chat-only participant id. This id is not an RMS conference participant.", "chat-6c0656f5-50fd-4366-b2b6-394a52ca071f"),
 			},
 		},
 		"InviteClaims": map[string]any{

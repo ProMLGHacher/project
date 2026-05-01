@@ -14,6 +14,7 @@ type ChatBootstrap struct {
 	ChatToken     string `json:"chatToken"`
 	ChatSpaceID   string `json:"chatSpaceId"`
 	ChatChannelID string `json:"chatChannelId"`
+	ParticipantID string `json:"participantId,omitempty"`
 }
 
 type ChatAdminClient struct {
@@ -49,6 +50,7 @@ func (c *ChatAdminClient) CreateSession(ctx context.Context, channelID string, p
 	}, &result); err != nil {
 		return ChatBootstrap{}, err
 	}
+	result.ParticipantID = participantID
 	return result, nil
 }
 

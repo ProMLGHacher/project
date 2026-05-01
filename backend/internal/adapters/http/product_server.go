@@ -1,6 +1,7 @@
 package httpadapter
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -8,15 +9,27 @@ import (
 	"strings"
 
 	"github.com/araik/codex-webrtc/project/backend/internal/application"
+	"github.com/google/uuid"
 )
 
 type ProductServer struct {
 	roomService *application.RoomService
-	rms         *application.RMSAdminClient
-	chat        *application.ChatAdminClient
+	rms         rmsAdminClient
+	chat        chatAdminClient
 }
 
-func NewProductServer(roomService *application.RoomService, rms *application.RMSAdminClient, chat *application.ChatAdminClient) *ProductServer {
+type rmsAdminClient interface {
+	CreateRoom(ctx context.Context, roomID string) error
+	CreateSession(ctx context.Context, roomID string, prefs application.PrejoinPreferences) (application.JoinResult, error)
+}
+
+type chatAdminClient interface {
+	CreateSpace(ctx context.Context, spaceID, title string) error
+	CreateChannel(ctx context.Context, spaceID, channelID, title string) error
+	CreateSession(ctx context.Context, channelID string, participantID string, prefs application.PrejoinPreferences) (application.ChatBootstrap, error)
+}
+
+func NewProductServer(roomService *application.RoomService, rms rmsAdminClient, chat chatAdminClient) *ProductServer {
 	return &ProductServer{
 		roomService: roomService,
 		rms:         rms,
@@ -76,12 +89,7 @@ func (s *ProductServer) handleCreateRoom(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if s.chat != nil {
-		channelID := chatChannelID(result.RoomID)
-		if err := s.chat.CreateSpace(r.Context(), result.RoomID, "Conference "+result.RoomID); err != nil {
-			writeError(w, http.StatusBadGateway, err)
-			return
-		}
-		if err := s.chat.CreateChannel(r.Context(), result.RoomID, channelID, "Conference chat"); err != nil {
+		if _, err := s.ensureConferenceChat(r, result.RoomID); err != nil {
 			writeError(w, http.StatusBadGateway, err)
 			return
 		}
@@ -133,12 +141,8 @@ func (s *ProductServer) handleRoomRoutes(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if s.chat != nil {
-			channelID := chatChannelID(roomID)
-			if err := s.chat.CreateSpace(r.Context(), roomID, "Conference "+roomID); err != nil {
-				writeError(w, http.StatusBadGateway, err)
-				return
-			}
-			if err := s.chat.CreateChannel(r.Context(), roomID, channelID, "Conference chat"); err != nil {
+			channelID, err := s.ensureConferenceChat(r, roomID)
+			if err != nil {
 				writeError(w, http.StatusBadGateway, err)
 				return
 			}
@@ -158,9 +162,54 @@ func (s *ProductServer) handleRoomRoutes(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if len(parts) == 3 && parts[1] == "chat" && parts[2] == "session" && r.Method == http.MethodPost {
+		var prefs application.PrejoinPreferences
+		if err := json.NewDecoder(r.Body).Decode(&prefs); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		if s.chat == nil {
+			writeError(w, http.StatusServiceUnavailable, errors.New("chat is not configured"))
+			return
+		}
+
+		if _, err := s.roomService.GetRoomMetadata(r.Context(), roomID); err != nil {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+
+		channelID, err := s.ensureConferenceChat(r, roomID)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, err)
+			return
+		}
+		participantID := "chat-" + uuid.NewString()
+		chat, err := s.chat.CreateSession(r.Context(), channelID, participantID, prefs)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, err)
+			return
+		}
+
+		log.Printf("[product-http] chat-session room_id=%s participant_id=%s role=%s", roomID, participantID, prefs.Role)
+		writeJSON(w, http.StatusOK, chat)
+		return
+	}
+
 	http.NotFound(w, r)
 }
 
 func chatChannelID(roomID string) string {
 	return roomID + ":conference"
+}
+
+func (s *ProductServer) ensureConferenceChat(r *http.Request, roomID string) (string, error) {
+	channelID := chatChannelID(roomID)
+	if err := s.chat.CreateSpace(r.Context(), roomID, "Conference "+roomID); err != nil {
+		return "", err
+	}
+	if err := s.chat.CreateChannel(r.Context(), roomID, channelID, "Conference chat"); err != nil {
+		return "", err
+	}
+	return channelID, nil
 }

@@ -5,6 +5,11 @@ import type {
   JoinRoomParams,
   JoinRoomResult
 } from '@features/room/domain/model/JoinRoom'
+import type {
+  CreateRoomChatSessionParams,
+  RoomChatSessionError,
+  RoomChatSessionResult
+} from '@features/room/domain/model/RoomChatSession'
 import type { GetRoomError, GetRoomParams, RoomMetadata } from '@features/room/domain/model/Room'
 import type { RoomExistsByIdParams } from '@features/room/domain/model/RoomExistsById'
 import type { RoomRepository } from '@features/room/domain/repository/RoomRepository'
@@ -52,6 +57,24 @@ export class HttpRoomRepository implements RoomRepository {
             micEnabled: params.micEnabled,
             cameraEnabled: params.cameraEnabled,
             role: params.role
+          })
+        })
+      )
+    } catch (error) {
+      return err(isHttpStatus(error, 404) ? { type: 'room-not-found' } : { type: 'unknown-error' })
+    }
+  }
+
+  async createRoomChatSession(
+    params: CreateRoomChatSessionParams
+  ): PromiseResult<RoomChatSessionResult, RoomChatSessionError> {
+    try {
+      return ok(
+        await request<RoomChatSessionResult>(`/api/rooms/${params.roomId}/chat/session`, {
+          method: 'POST',
+          body: JSON.stringify({
+            displayName: params.displayName,
+            role: 'participant'
           })
         })
       )

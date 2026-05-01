@@ -9,7 +9,7 @@ import { ValidateRoomIdInputUseCase } from './domain/usecases/ValidateRoomIdInpu
 import { recentRoomsRepositoryToken } from './domain/repository/tokens'
 import { HomeViewModel } from './presentation/view_model/HomeViewModel'
 import { CreateRoomUseCase } from '@features/room/domain/usecases/CreateRoomUseCase'
-import { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
+import { CreateRoomChatSessionUseCase } from '@features/room/domain/usecases/CreateRoomChatSessionUseCase'
 import { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
 import { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
 import { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
@@ -68,7 +68,7 @@ class HomeModule {
     @Inject(JoinRoomFlowUseCase) joinRoom: JoinRoomFlowUseCase,
     @Inject(GetRecentRoomsUseCase) getRecentRooms: GetRecentRoomsUseCase,
     @Inject(SaveRecentRoomVisitUseCase) saveRecentRoomVisit: SaveRecentRoomVisitUseCase,
-    @Inject(JoinRoomUseCase) joinRoomSession: JoinRoomUseCase,
+    @Inject(CreateRoomChatSessionUseCase) createRoomChatSession: CreateRoomChatSessionUseCase,
     @Inject(GetUserPreferencesUseCase) getUserPreferences: GetUserPreferencesUseCase,
     @Inject(ConnectChatUseCase) connectChat: ConnectChatUseCase,
     @Inject(DisconnectChatUseCase) disconnectChat: DisconnectChatUseCase,
@@ -85,7 +85,7 @@ class HomeModule {
       joinRoom,
       getRecentRooms,
       saveRecentRoomVisit,
-      joinRoomSession,
+      createRoomChatSession,
       getUserPreferences,
       connectChat,
       disconnectChat,

@@ -20,7 +20,7 @@ import type { EditChatMessageUseCase } from '@capabilities/chat/domain/usecases/
 import type { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
 import type { UploadChatAttachmentUseCase } from '@capabilities/chat/domain/usecases/UploadChatAttachmentUseCase'
 import type { GetUserPreferencesUseCase } from '@capabilities/user-preferences/domain/usecases/GetUserPreferencesUseCase'
-import type { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
+import type { CreateRoomChatSessionUseCase } from '@features/room/domain/usecases/CreateRoomChatSessionUseCase'
 
 export class HomeViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<HomeUiState>(initialHomeState)
@@ -35,7 +35,7 @@ export class HomeViewModel extends ViewModel {
     private readonly joinRoomFlowUseCase: JoinRoomFlowUseCase,
     private readonly getRecentRoomsUseCase: GetRecentRoomsUseCase,
     private readonly saveRecentRoomVisitUseCase: SaveRecentRoomVisitUseCase,
-    private readonly joinRoomUseCase: JoinRoomUseCase,
+    private readonly createRoomChatSessionUseCase: CreateRoomChatSessionUseCase,
     private readonly getUserPreferencesUseCase: GetUserPreferencesUseCase,
     private readonly connectChatUseCase: ConnectChatUseCase,
     private readonly disconnectChatUseCase: DisconnectChatUseCase,
@@ -271,12 +271,9 @@ export class HomeViewModel extends ViewModel {
 
     const preferences = await this.getUserPreferencesUseCase.execute()
     const displayName = preferences.displayName?.trim() || 'Гость'
-    const session = await this.joinRoomUseCase.execute({
+    const session = await this.createRoomChatSessionUseCase.execute({
       roomId,
-      displayName,
-      micEnabled: false,
-      cameraEnabled: false,
-      role: 'participant'
+      displayName
     })
 
     if (!session.ok) {
@@ -292,20 +289,7 @@ export class HomeViewModel extends ViewModel {
       return
     }
 
-    if (!session.value.chatUrl || !session.value.chatToken || !session.value.chatChannelId) {
-      this.state.update((state) => ({
-        ...state,
-        chatDrawer: {
-          ...state.chatDrawer,
-          loading: false,
-          status: 'failed',
-          error: 'Chat is not available for this room'
-        }
-      }))
-      return
-    }
-
-    await this.rememberRoom(session.value.roomId)
+    await this.rememberRoom(roomId)
     const result = await this.connectChatUseCase.execute({
       chatUrl: session.value.chatUrl,
       chatToken: session.value.chatToken,

@@ -2,6 +2,7 @@ import { Inject, Module, Provides, Singleton, createModuleFromClass } from '@kvt
 import { HttpRoomRepository } from './data/repository/HttpRoomRepository'
 import { roomRepositoryToken } from './domain/repository/tokens'
 import { CreateRoomUseCase } from './domain/usecases/CreateRoomUseCase'
+import { CreateRoomChatSessionUseCase } from './domain/usecases/CreateRoomChatSessionUseCase'
 import { GetRoomMetadataUseCase } from './domain/usecases/GetRoomMetadataUseCase'
 import { JoinRoomUseCase } from './domain/usecases/JoinRoomUseCase'
 import { RoomExistsByIdUseCase } from './domain/usecases/RoomExistsByIdUseCase'
@@ -18,6 +19,13 @@ class RoomCoreModule {
   @Provides(CreateRoomUseCase)
   static provideCreateRoomUseCase(@Inject(roomRepositoryToken) repository: RoomRepository) {
     return new CreateRoomUseCase(repository)
+  }
+
+  @Provides(CreateRoomChatSessionUseCase)
+  static provideCreateRoomChatSessionUseCase(
+    @Inject(roomRepositoryToken) repository: RoomRepository
+  ) {
+    return new CreateRoomChatSessionUseCase(repository)
   }
 
   @Provides(GetRoomMetadataUseCase)
