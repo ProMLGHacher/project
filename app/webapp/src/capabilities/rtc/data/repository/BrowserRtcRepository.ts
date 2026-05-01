@@ -104,6 +104,9 @@ export class BrowserRtcRepository implements RtcRepository {
   async setMicrophoneEnabled(enabled: boolean): PromiseResult<void, RtcError> {
     try {
       await this.client?.setMicEnabled(enabled)
+      if (!enabled) {
+        this.audioProcessingRepository.release('rtc-microphone')
+      }
       return ok()
     } catch (error) {
       return err({ type: 'media-publish-failed', message: readableError(error) })

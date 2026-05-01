@@ -5,7 +5,8 @@ export function updateLocalSlot(
   state: RoomUiState,
   kind: ParticipantSlotKind,
   enabled: boolean,
-  publishing: boolean
+  publishing: boolean,
+  trackBound = publishing
 ): readonly Participant[] {
   return state.participants.map((participant) => {
     if (participant.id !== state.localParticipantId) {
@@ -20,7 +21,7 @@ export function updateLocalSlot(
               ...slot,
               enabled,
               publishing,
-              trackBound: publishing,
+              trackBound,
               revision: slot.revision + 1
             }
           : slot

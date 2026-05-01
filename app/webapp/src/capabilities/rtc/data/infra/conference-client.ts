@@ -165,8 +165,10 @@ export class ConferenceClient {
         return
       }
 
-      if (!enabled && !this.localAudioTrack) {
+      if (!enabled) {
         await this.audioTransceiver.sender.replaceTrack(null)
+        this.stopLocalAudio()
+        this.audioProcessingRepository.release('rtc-microphone')
         this.publishLocalSlots()
         this.sendSlotUpdate('audio', false, false, false)
         this.emitDiagnostics()
@@ -310,9 +312,7 @@ export class ConferenceClient {
     this.publisherPc?.close()
     this.subscriberPc?.close()
     this.audioProcessingRepository.release('rtc-microphone')
-    this.localAudioTrack?.stop()
-    this.localAudioRawStream?.getTracks().forEach((track) => track.stop())
-    this.localAudioRawStream = null
+    this.stopLocalAudio()
     this.localCameraTrack?.stop()
     this.localScreenTrack?.stop()
     this.localScreenAudioTrack?.stop()
@@ -460,6 +460,13 @@ export class ConferenceClient {
     }
 
     return pc
+  }
+
+  private stopLocalAudio() {
+    this.localAudioTrack?.stop()
+    this.localAudioTrack = null
+    this.localAudioRawStream?.getTracks().forEach((track) => track.stop())
+    this.localAudioRawStream = null
   }
 
   private reservePublisherSlots() {

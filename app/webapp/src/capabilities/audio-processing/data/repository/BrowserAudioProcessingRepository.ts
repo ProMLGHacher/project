@@ -111,6 +111,7 @@ export class BrowserAudioProcessingRepository implements AudioProcessingReposito
 
     disconnectGraph(graph)
     graph.monitorGain.disconnect()
+    graph.rawStream.getTracks().forEach((track) => track.stop())
     void graph.context.close().catch(() => undefined)
     this.graphs.delete(owner)
 

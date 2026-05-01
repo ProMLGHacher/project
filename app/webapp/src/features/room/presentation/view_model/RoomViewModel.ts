@@ -365,7 +365,7 @@ export class RoomViewModel extends ViewModel {
       return
     }
 
-    await this.connectStoredSession(storedSession.value)
+    await this.connectStoredSession(storedSession.value, undefined, true)
   }
 
   private async toggleMicrophone() {
@@ -375,7 +375,7 @@ export class RoomViewModel extends ViewModel {
       failedToast: 'room.toasts.microphoneFailed',
       enabledStatus: 'room.status.microphoneOn',
       disabledStatus: 'room.status.microphoneMuted',
-      getPublishing: () => true,
+      getPublishing: (enabled) => enabled,
       execute: (enabled) => this.toggleRoomMicrophoneUseCase.execute(enabled)
     })
   }
@@ -498,7 +498,11 @@ export class RoomViewModel extends ViewModel {
     }))
   }
 
-  private async connectStoredSession(session: StoredJoinSession, openRoomRequestId?: number) {
+  private async connectStoredSession(
+    session: StoredJoinSession,
+    openRoomRequestId?: number,
+    showExpiredToast = false
+  ) {
     const requestId = this.requestGuards.next('connectRoom')
     const preferences = await this.getUserPreferencesUseCase.execute()
 
@@ -542,8 +546,6 @@ export class RoomViewModel extends ViewModel {
         return
       }
 
-      this.effects.emit({ type: 'show-toast', message: 'room.toasts.sessionExpired' })
-
       this.updateState((state) => ({
         ...state,
         status: 'idle',
@@ -567,6 +569,10 @@ export class RoomViewModel extends ViewModel {
         },
         actionStatus: 'room.status.sessionExpired'
       }))
+
+      if (showExpiredToast) {
+        this.effects.emit({ type: 'show-toast', message: 'room.toasts.sessionExpired' })
+      }
 
       return
     }
@@ -910,11 +916,11 @@ export class RoomViewModel extends ViewModel {
       ...state,
       microphone: {
         ...state.microphone,
-        enabled: participantHasEnabledSlot(localParticipant, 'audio')
+        enabled: Boolean(state.localMediaStreams.audio) || participantHasEnabledSlot(localParticipant, 'audio')
       },
       camera: {
         ...state.camera,
-        enabled: participantHasEnabledSlot(localParticipant, 'camera')
+        enabled: Boolean(state.localMediaStreams.camera) || participantHasEnabledSlot(localParticipant, 'camera')
       },
       screenShare: {
         ...state.screenShare,

@@ -368,12 +368,14 @@ export class KvatumChatClient {
     switch (envelope.type) {
       case 'chat.snapshot': {
         const snapshot = envelope.payload as SnapshotPayload
-        const messagesByChannel: Record<string, readonly ChatMessage[]> = {}
+        const messagesByChannel: Record<string, readonly ChatMessage[]> = {
+          ...this.state.messagesByChannel
+        }
         for (const message of snapshot.messages) {
-          messagesByChannel[message.channelId] = [
-            ...(messagesByChannel[message.channelId] ?? []),
-            message
-          ]
+          messagesByChannel[message.channelId] = mergeMessageList(
+            messagesByChannel[message.channelId] ?? [],
+            [message]
+          )
         }
         this.setState({
           ...this.state,
@@ -433,14 +435,11 @@ export class KvatumChatClient {
   }
 
   private mergeMessages(channelId: string, messages: readonly ChatMessage[]): void {
-    const existing = this.state.messagesByChannel[channelId] ?? []
-    const byId = new Map(existing.map((message) => [message.id, message]))
-    messages.forEach((message) => byId.set(message.id, message))
     this.setState({
       ...this.state,
       messagesByChannel: {
         ...this.state.messagesByChannel,
-        [channelId]: [...byId.values()].sort(compareMessages)
+        [channelId]: mergeMessageList(this.state.messagesByChannel[channelId] ?? [], messages)
       }
     })
   }
@@ -506,6 +505,15 @@ type SnapshotPayload = {
 
 function compareMessages(left: ChatMessage, right: ChatMessage): number {
   return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+}
+
+function mergeMessageList(
+  existing: readonly ChatMessage[],
+  incoming: readonly ChatMessage[]
+): readonly ChatMessage[] {
+  const byId = new Map(existing.map((message) => [message.id, message]))
+  incoming.forEach((message) => byId.set(message.id, message))
+  return [...byId.values()].sort(compareMessages)
 }
 
 function resolveWsUrl(chatUrl: string, token: string): string {
