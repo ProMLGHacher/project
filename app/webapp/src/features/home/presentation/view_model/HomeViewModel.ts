@@ -15,12 +15,17 @@ import type { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/D
 import type { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
 import type { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
 import type { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
+import type { ToggleChatReactionUseCase } from '@capabilities/chat/domain/usecases/ToggleChatReactionUseCase'
+import type { EditChatMessageUseCase } from '@capabilities/chat/domain/usecases/EditChatMessageUseCase'
+import type { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
+import type { UploadChatAttachmentUseCase } from '@capabilities/chat/domain/usecases/UploadChatAttachmentUseCase'
 import type { GetUserPreferencesUseCase } from '@capabilities/user-preferences/domain/usecases/GetUserPreferencesUseCase'
 import type { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
 
 export class HomeViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<HomeUiState>(initialHomeState)
   private readonly effects = new MutableSharedFlow<HomeUiEffect>()
+  private chatHighlightTimer: number | null = null
 
   readonly uiState = this.state.asStateFlow()
   readonly uiEffect = this.effects.asSharedFlow()
@@ -36,7 +41,11 @@ export class HomeViewModel extends ViewModel {
     private readonly disconnectChatUseCase: DisconnectChatUseCase,
     private readonly observeChatUseCase: ObserveChatUseCase,
     private readonly sendChatMessageUseCase: SendChatMessageUseCase,
-    private readonly markChatReadUseCase: MarkChatReadUseCase
+    private readonly markChatReadUseCase: MarkChatReadUseCase,
+    private readonly toggleChatReactionUseCase: ToggleChatReactionUseCase,
+    private readonly editChatMessageUseCase: EditChatMessageUseCase,
+    private readonly deleteChatMessageUseCase: DeleteChatMessageUseCase,
+    private readonly uploadChatAttachmentUseCase: UploadChatAttachmentUseCase
   ) {
     super()
     void this.loadRecentRooms()
@@ -51,7 +60,9 @@ export class HomeViewModel extends ViewModel {
           chatDrawer: {
             ...state.chatDrawer,
             status: chat.status,
+            localParticipantId: chat.participant?.id ?? state.chatDrawer.localParticipantId,
             messages: chat.messages,
+            unreadCount: chat.unreadCount,
             error: chat.lastError,
             loading: state.chatDrawer.loading && chat.status !== 'connected'
           }
@@ -83,6 +94,51 @@ export class HomeViewModel extends ViewModel {
         break
       case 'chat-message-sent':
         void this.sendChatMessage()
+        break
+      case 'chat-latest-visible':
+        void this.markLatestChatMessageRead()
+        break
+      case 'chat-file-selected':
+        void this.uploadChatAttachment(event.file)
+        break
+      case 'chat-reaction-toggled':
+        void this.toggleChatReactionUseCase.execute(event.messageId, event.emoji)
+        break
+      case 'chat-reply-started':
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: { ...state.chatDrawer, replyToId: event.messageId }
+        }))
+        break
+      case 'chat-reply-preview-pressed':
+        this.highlightChatMessage(event.messageId)
+        break
+      case 'chat-reply-cancelled':
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: { ...state.chatDrawer, replyToId: null }
+        }))
+        break
+      case 'chat-edit-started':
+        this.startChatEdit(event.messageId)
+        break
+      case 'chat-edit-cancelled':
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: { ...state.chatDrawer, editingMessageId: null, editingDraft: '' }
+        }))
+        break
+      case 'chat-edit-draft-changed':
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: { ...state.chatDrawer, editingDraft: event.value }
+        }))
+        break
+      case 'chat-edit-submitted':
+        void this.submitChatEdit(event.messageId)
+        break
+      case 'chat-message-deleted':
+        void this.deleteChatMessage(event.messageId)
         break
       case 'create-room-pressed':
         void this.createRoom()
@@ -197,8 +253,16 @@ export class HomeViewModel extends ViewModel {
         ...state.chatDrawer,
         open: true,
         roomId,
+        localParticipantId: null,
         status: 'connecting',
         messages: [],
+        pendingAttachments: [],
+        unreadCount: 0,
+        lastReadMessageId: null,
+        replyToId: null,
+        editingMessageId: null,
+        editingDraft: '',
+        highlightedMessageId: null,
         draft: '',
         loading: true,
         error: null
@@ -266,6 +330,10 @@ export class HomeViewModel extends ViewModel {
 
   private closeChatDrawer() {
     this.disconnectChatUseCase.execute()
+    if (this.chatHighlightTimer) {
+      window.clearTimeout(this.chatHighlightTimer)
+      this.chatHighlightTimer = null
+    }
     this.state.update((state) => ({
       ...state,
       chatDrawer: initialHomeState.chatDrawer
@@ -273,23 +341,35 @@ export class HomeViewModel extends ViewModel {
   }
 
   private async sendChatMessage() {
-    const draft = this.state.value.chatDrawer.draft.trim()
+    const chat = this.state.value.chatDrawer
+    const draft = chat.draft.trim()
     if (!draft) {
       return
     }
 
     this.state.update((state) => ({
       ...state,
-      chatDrawer: { ...state.chatDrawer, draft: '', error: null }
+      chatDrawer: {
+        ...state.chatDrawer,
+        draft: '',
+        replyToId: null,
+        pendingAttachments: [],
+        error: null
+      }
     }))
 
-    const result = await this.sendChatMessageUseCase.execute({ markdown: draft })
+    const result = await this.sendChatMessageUseCase.execute({
+      markdown: draft,
+      replyToId: chat.replyToId,
+      attachments: chat.pendingAttachments
+    })
     if (!result.ok) {
       this.state.update((state) => ({
         ...state,
         chatDrawer: {
           ...state.chatDrawer,
           draft,
+          pendingAttachments: chat.pendingAttachments,
           error: result.error.message ?? result.error.type
         }
       }))
@@ -303,7 +383,101 @@ export class HomeViewModel extends ViewModel {
     const latest = this.state.value.chatDrawer.messages.at(-1)
     if (latest) {
       await this.markChatReadUseCase.execute(latest.id)
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: { ...state.chatDrawer, lastReadMessageId: latest.id, unreadCount: 0 }
+      }))
     }
+  }
+
+  private async uploadChatAttachment(file: File) {
+    const result = await this.uploadChatAttachmentUseCase.execute({ file })
+    if (!result.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: { ...state.chatDrawer, error: result.error.message ?? result.error.type }
+      }))
+      return
+    }
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: {
+        ...state.chatDrawer,
+        pendingAttachments: [...state.chatDrawer.pendingAttachments, result.value],
+        error: null
+      }
+    }))
+  }
+
+  private startChatEdit(messageId: string) {
+    const message = this.state.value.chatDrawer.messages.find((item) => item.id === messageId)
+    if (
+      !message ||
+      message.author.id !== this.state.value.chatDrawer.localParticipantId ||
+      message.deletedAt
+    ) {
+      return
+    }
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: {
+        ...state.chatDrawer,
+        editingMessageId: messageId,
+        editingDraft: message.bodyMarkdown,
+        replyToId: null
+      }
+    }))
+  }
+
+  private async submitChatEdit(messageId: string) {
+    const draft = this.state.value.chatDrawer.editingDraft.trim()
+    if (!draft) {
+      return
+    }
+    const result = await this.editChatMessageUseCase.execute(messageId, draft)
+    if (!result.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: { ...state.chatDrawer, error: result.error.message ?? result.error.type }
+      }))
+      return
+    }
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: { ...state.chatDrawer, editingMessageId: null, editingDraft: '', error: null }
+    }))
+  }
+
+  private async deleteChatMessage(messageId: string) {
+    const message = this.state.value.chatDrawer.messages.find((item) => item.id === messageId)
+    if (!message || message.author.id !== this.state.value.chatDrawer.localParticipantId) {
+      return
+    }
+    const result = await this.deleteChatMessageUseCase.execute(messageId)
+    if (!result.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: { ...state.chatDrawer, error: result.error.message ?? result.error.type }
+      }))
+    }
+  }
+
+  private highlightChatMessage(messageId: string) {
+    if (this.chatHighlightTimer) {
+      window.clearTimeout(this.chatHighlightTimer)
+    }
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: { ...state.chatDrawer, highlightedMessageId: messageId }
+    }))
+    this.chatHighlightTimer = window.setTimeout(() => {
+      this.chatHighlightTimer = null
+      this.state.update((state) =>
+        state.chatDrawer.highlightedMessageId === messageId
+          ? { ...state, chatDrawer: { ...state.chatDrawer, highlightedMessageId: null } }
+          : state
+      )
+    }, 1500)
   }
 }
 

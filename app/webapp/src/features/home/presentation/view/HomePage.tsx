@@ -67,7 +67,22 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
         chat={uiState.chatDrawer}
         t={t}
         onClose={() => viewModel.onEvent({ type: 'chat-drawer-closed' })}
+        onDelete={(messageId) => viewModel.onEvent({ type: 'chat-message-deleted', messageId })}
         onDraftChange={(value) => viewModel.onEvent({ type: 'chat-draft-changed', value })}
+        onEdit={(messageId) => viewModel.onEvent({ type: 'chat-edit-started', messageId })}
+        onEditCancel={() => viewModel.onEvent({ type: 'chat-edit-cancelled' })}
+        onEditDraftChange={(value) => viewModel.onEvent({ type: 'chat-edit-draft-changed', value })}
+        onEditSubmit={(messageId) => viewModel.onEvent({ type: 'chat-edit-submitted', messageId })}
+        onFileSelected={(file) => viewModel.onEvent({ type: 'chat-file-selected', file })}
+        onLatestVisible={() => viewModel.onEvent({ type: 'chat-latest-visible' })}
+        onReaction={(messageId, emoji) =>
+          viewModel.onEvent({ type: 'chat-reaction-toggled', messageId, emoji })
+        }
+        onReply={(messageId) => viewModel.onEvent({ type: 'chat-reply-started', messageId })}
+        onReplyCancel={() => viewModel.onEvent({ type: 'chat-reply-cancelled' })}
+        onReplyPreview={(messageId) =>
+          viewModel.onEvent({ type: 'chat-reply-preview-pressed', messageId })
+        }
         onSend={() => viewModel.onEvent({ type: 'chat-message-sent' })}
       />
     </section>

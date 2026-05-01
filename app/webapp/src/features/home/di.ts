@@ -12,9 +12,13 @@ import { CreateRoomUseCase } from '@features/room/domain/usecases/CreateRoomUseC
 import { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
 import { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
 import { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
+import { DeleteChatMessageUseCase } from '@capabilities/chat/domain/usecases/DeleteChatMessageUseCase'
+import { EditChatMessageUseCase } from '@capabilities/chat/domain/usecases/EditChatMessageUseCase'
 import { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
 import { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
 import { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
+import { ToggleChatReactionUseCase } from '@capabilities/chat/domain/usecases/ToggleChatReactionUseCase'
+import { UploadChatAttachmentUseCase } from '@capabilities/chat/domain/usecases/UploadChatAttachmentUseCase'
 import { GetUserPreferencesUseCase } from '@capabilities/user-preferences/domain/usecases/GetUserPreferencesUseCase'
 import type { RecentRoomsRepository } from './domain/repository/RecentRoomsRepository'
 
@@ -70,7 +74,11 @@ class HomeModule {
     @Inject(DisconnectChatUseCase) disconnectChat: DisconnectChatUseCase,
     @Inject(ObserveChatUseCase) observeChat: ObserveChatUseCase,
     @Inject(SendChatMessageUseCase) sendChatMessage: SendChatMessageUseCase,
-    @Inject(MarkChatReadUseCase) markChatRead: MarkChatReadUseCase
+    @Inject(MarkChatReadUseCase) markChatRead: MarkChatReadUseCase,
+    @Inject(ToggleChatReactionUseCase) toggleChatReaction: ToggleChatReactionUseCase,
+    @Inject(EditChatMessageUseCase) editChatMessage: EditChatMessageUseCase,
+    @Inject(DeleteChatMessageUseCase) deleteChatMessage: DeleteChatMessageUseCase,
+    @Inject(UploadChatAttachmentUseCase) uploadChatAttachment: UploadChatAttachmentUseCase
   ) {
     return new HomeViewModel(
       createRoom,
@@ -83,7 +91,11 @@ class HomeModule {
       disconnectChat,
       observeChat,
       sendChatMessage,
-      markChatRead
+      markChatRead,
+      toggleChatReaction,
+      editChatMessage,
+      deleteChatMessage,
+      uploadChatAttachment
     )
   }
 }

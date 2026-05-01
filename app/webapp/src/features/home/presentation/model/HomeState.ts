@@ -2,7 +2,7 @@ import type { ButtonState } from '@core/utils/ButtonState'
 import type { FormFieldStateWithShowError } from '@core/utils/FormFieldState'
 import type { PrefixedTranslationKey } from '@core/i18n/translation-key'
 import type { RecentRoom } from '../../domain/model/RecentRoom'
-import type { ChatConnectionStatus, ChatMessage } from '@capabilities/chat/domain/model/Chat'
+import type { ChatAttachment, ChatConnectionStatus, ChatMessage } from '@capabilities/chat/domain/model/Chat'
 
 export type HomeErrorMessageKey = PrefixedTranslationKey<'voice', 'home.errors'>
 export type HomeToastMessageKey = Extract<HomeErrorMessageKey, 'home.errors.createRoom'>
@@ -19,8 +19,16 @@ export type HomeUiState = {
 export type HomeChatDrawerState = {
   readonly open: boolean
   readonly roomId: string | null
+  readonly localParticipantId: string | null
   readonly status: ChatConnectionStatus
   readonly messages: readonly ChatMessage[]
+  readonly pendingAttachments: readonly ChatAttachment[]
+  readonly unreadCount: number
+  readonly lastReadMessageId: string | null
+  readonly replyToId: string | null
+  readonly editingMessageId: string | null
+  readonly editingDraft: string
+  readonly highlightedMessageId: string | null
   readonly draft: string
   readonly loading: boolean
   readonly error: string | null
@@ -34,6 +42,17 @@ export type HomeUiAction =
   | { readonly type: 'chat-drawer-closed' }
   | { readonly type: 'chat-draft-changed'; readonly value: string }
   | { readonly type: 'chat-message-sent' }
+  | { readonly type: 'chat-latest-visible' }
+  | { readonly type: 'chat-file-selected'; readonly file: File }
+  | { readonly type: 'chat-reaction-toggled'; readonly messageId: string; readonly emoji: string }
+  | { readonly type: 'chat-reply-started'; readonly messageId: string }
+  | { readonly type: 'chat-reply-preview-pressed'; readonly messageId: string }
+  | { readonly type: 'chat-reply-cancelled' }
+  | { readonly type: 'chat-edit-started'; readonly messageId: string }
+  | { readonly type: 'chat-edit-cancelled' }
+  | { readonly type: 'chat-edit-draft-changed'; readonly value: string }
+  | { readonly type: 'chat-edit-submitted'; readonly messageId: string }
+  | { readonly type: 'chat-message-deleted'; readonly messageId: string }
   | { readonly type: 'create-room-pressed' }
 
 export type HomeUiEffect =
@@ -48,8 +67,16 @@ export const initialHomeState: HomeUiState = {
   chatDrawer: {
     open: false,
     roomId: null,
+    localParticipantId: null,
     status: 'idle',
     messages: [],
+    pendingAttachments: [],
+    unreadCount: 0,
+    lastReadMessageId: null,
+    replyToId: null,
+    editingMessageId: null,
+    editingDraft: '',
+    highlightedMessageId: null,
     draft: '',
     loading: false,
     error: null

@@ -539,7 +539,31 @@ function mergeMessageList(
 ): readonly ChatMessage[] {
   const byId = new Map(existing.map((message) => [message.id, message]))
   incoming.forEach((message) => byId.set(message.id, message))
+
+  for (const message of incoming) {
+    if (message.pending) {
+      continue
+    }
+
+    for (const candidate of byId.values()) {
+      if (candidate.pending && isPendingEcho(candidate, message)) {
+        byId.delete(candidate.id)
+      }
+    }
+  }
+
   return [...byId.values()].sort(compareMessages)
+}
+
+function isPendingEcho(pending: ChatMessage, confirmed: ChatMessage): boolean {
+  return (
+    pending.channelId === confirmed.channelId &&
+    pending.author.id === confirmed.author.id &&
+    pending.bodyMarkdown === confirmed.bodyMarkdown &&
+    pending.replyToId === confirmed.replyToId &&
+    pending.attachments.length === confirmed.attachments.length &&
+    pending.attachments.every((attachment, index) => attachment.id === confirmed.attachments[index]?.id)
+  )
 }
 
 function resolveWsUrl(chatUrl: string, token: string): string {
