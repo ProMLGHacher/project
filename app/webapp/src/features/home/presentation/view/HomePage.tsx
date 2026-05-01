@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '@core/design-system'
 import { HomeViewModel } from '../view_model/HomeViewModel'
-import { CreateRoomCard, JoinRoomCard } from './HomeCards'
+import { CreateRoomCard, JoinRoomCard, RecentRoomsCard } from './HomeCards'
 
 export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): ReactNode {
   const viewModel = useViewModel(_vm)
@@ -46,6 +46,14 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
               viewModel.onEvent({ type: 'id-or-link-to-join-changed', value })
             }
             onJoin={() => viewModel.onEvent({ type: 'join-pressed' })}
+          />
+        </div>
+
+        <div className="mt-4">
+          <RecentRoomsCard
+            rooms={uiState.recentRooms}
+            t={t}
+            onOpen={(roomId) => viewModel.onEvent({ type: 'recent-room-pressed', roomId })}
           />
         </div>
       </div>

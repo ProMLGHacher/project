@@ -20,6 +20,8 @@ export default {
     continue: 'Продолжить',
     checking: 'Проверяем...',
     directJoinHint: 'Если комната существует, сразу откроем экран входа.',
+    recentTitle: 'Последние встречи',
+    recentDescription: 'Быстрый вход в комнаты, которые вы открывали недавно.',
     errors: {
       roomInputRequired: 'Введите id комнаты или ссылку',
       invalidRoom: 'Введите корректный id комнаты или ссылку',

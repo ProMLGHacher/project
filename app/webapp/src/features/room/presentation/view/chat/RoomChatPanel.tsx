@@ -66,6 +66,7 @@ export const RoomChatPanel = memo(function RoomChatPanel({
   t
 }: RoomChatPanelProps) {
   const messagesRef = useRef<HTMLDivElement | null>(null)
+  const draftRef = useRef<HTMLTextAreaElement | null>(null)
   const onLatestVisibleRef = useRef(onLatestVisible)
   const wasAtBottomRef = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
@@ -115,6 +116,13 @@ export const RoomChatPanel = memo(function RoomChatPanel({
     )
     node?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [chat.highlightedMessageId])
+
+  useEffect(() => {
+    if (!chat.replyToId) {
+      return
+    }
+    requestAnimationFrame(() => draftRef.current?.focus())
+  }, [chat.replyToId])
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -232,6 +240,7 @@ export const RoomChatPanel = memo(function RoomChatPanel({
             )}
 
             <Textarea
+              ref={draftRef}
               className="max-h-36 min-h-16 resize-none rounded-md border-border bg-muted text-foreground placeholder:text-muted-foreground"
               placeholder={t('room.chat.placeholder')}
               value={chat.draft}

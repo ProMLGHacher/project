@@ -11,6 +11,7 @@ import {
 } from '@core/design-system'
 import type { HomeUiState } from '../model/HomeState'
 import { JoinIcon, LogoMark } from './home-icons'
+import type { RecentRoom } from '../../domain/model/RecentRoom'
 
 type VoiceT = TFunction<'voice'>
 
@@ -105,4 +106,58 @@ export function JoinRoomCard({
       </CardContent>
     </Card>
   )
+}
+
+export interface RecentRoomsCardProps {
+  readonly rooms: readonly RecentRoom[]
+  readonly onOpen: (roomId: string) => void
+  readonly t: VoiceT
+}
+
+export function RecentRoomsCard({ rooms, onOpen, t }: RecentRoomsCardProps) {
+  if (rooms.length === 0) {
+    return null
+  }
+
+  return (
+    <Card className="rounded-2xl border-border/70 bg-surface shadow-sm shadow-black/5">
+      <CardContent className="grid gap-3 p-4 sm:p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">{t('home.recentTitle')}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t('home.recentDescription')}</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {rooms.map((room) => (
+            <button
+              key={room.roomId}
+              className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-primary/60 hover:bg-accent"
+              type="button"
+              onClick={() => onOpen(room.roomId)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {room.roomId}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {formatRecentVisit(room.visitedAt)}
+                </span>
+              </span>
+              <span className="shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary">
+                {'>'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function formatRecentVisit(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value))
 }

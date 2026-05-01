@@ -7,7 +7,9 @@ import {
   type HomeErrorMessageKey
 } from '../model/HomeState'
 import type { CreateRoomFlowUseCase } from '@features/home/domain/usecases/CreateRoomFlowUseCase'
+import type { GetRecentRoomsUseCase } from '@features/home/domain/usecases/GetRecentRoomsUseCase'
 import type { JoinRoomFlowUseCase } from '@features/home/domain/usecases/JoinRoomFlowUseCase'
+import type { SaveRecentRoomVisitUseCase } from '@features/home/domain/usecases/SaveRecentRoomVisitUseCase'
 
 export class HomeViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<HomeUiState>(initialHomeState)
@@ -18,15 +20,21 @@ export class HomeViewModel extends ViewModel {
 
   constructor(
     private readonly createRoomFlowUseCase: CreateRoomFlowUseCase,
-    private readonly joinRoomFlowUseCase: JoinRoomFlowUseCase
+    private readonly joinRoomFlowUseCase: JoinRoomFlowUseCase,
+    private readonly getRecentRoomsUseCase: GetRecentRoomsUseCase,
+    private readonly saveRecentRoomVisitUseCase: SaveRecentRoomVisitUseCase
   ) {
     super()
+    void this.loadRecentRooms()
   }
 
   onEvent(event: HomeUiAction) {
     switch (event.type) {
       case 'join-pressed':
         void this.openTypedRoom()
+        break
+      case 'recent-room-pressed':
+        void this.openRecentRoom(event.roomId)
         break
       case 'create-room-pressed':
         void this.createRoom()
@@ -68,6 +76,7 @@ export class HomeViewModel extends ViewModel {
     }))
 
     if (result.ok) {
+      await this.rememberRoom(result.value.roomId)
       this.effects.emit({ type: 'open-room', roomId: result.value.roomId })
     } else {
       this.effects.emit({ type: 'show-message', message: 'home.errors.createRoom' })
@@ -104,7 +113,32 @@ export class HomeViewModel extends ViewModel {
       ...state,
       joinButtonState: { ...state.joinButtonState, loading: false, enabled: true }
     }))
+    await this.rememberRoom(result.value.roomId)
     this.effects.emit({ type: 'open-room', roomId: result.value.roomId })
+  }
+
+  private async openRecentRoom(roomId: string) {
+    this.state.update((state) => ({ ...state, feedback: null }))
+
+    const result = await this.joinRoomFlowUseCase.execute({ idOrLink: roomId })
+    if (!result.ok) {
+      const message = homeJoinErrorMessage(result.error.type)
+      this.state.update((state) => ({ ...state, feedback: message }))
+      return
+    }
+
+    await this.rememberRoom(result.value.roomId)
+    this.effects.emit({ type: 'open-room', roomId: result.value.roomId })
+  }
+
+  private async loadRecentRooms() {
+    const recentRooms = await this.getRecentRoomsUseCase.execute()
+    this.state.update((state) => ({ ...state, recentRooms }))
+  }
+
+  private async rememberRoom(roomId: string) {
+    const recentRooms = await this.saveRecentRoomVisitUseCase.execute({ roomId })
+    this.state.update((state) => ({ ...state, recentRooms }))
   }
 }
 

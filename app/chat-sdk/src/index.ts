@@ -120,6 +120,7 @@ export type ChatEvent =
   | { readonly type: 'link-preview-updated'; readonly message: ChatMessage }
 
 type Listener<T> = (value: T) => void
+const heartbeatIntervalMs = 25_000
 
 const initialState: ChatState = {
   status: 'idle',
@@ -143,6 +144,7 @@ export class KvatumChatClient {
   private readonly eventListeners = new Set<Listener<ChatEvent>>()
   private readonly errorListeners = new Set<Listener<Error>>()
   private socket: WebSocket | null = null
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private chatUrl = ''
   private chatToken = ''
   private state: ChatState = initialState
@@ -185,12 +187,14 @@ export class KvatumChatClient {
     this.socket = socket
     socket.addEventListener('open', () => {
       this.setState({ ...this.state, status: 'connected' })
+      this.startHeartbeat(socket)
     })
     socket.addEventListener('message', (event) => {
       this.handleEnvelope(JSON.parse(String(event.data)) as SignalEnvelope)
     })
     socket.addEventListener('close', () => {
       if (this.socket === socket) {
+        this.stopHeartbeat()
         this.setState({ ...this.state, status: 'closed' })
       }
     })
@@ -200,6 +204,7 @@ export class KvatumChatClient {
   }
 
   disconnect(): void {
+    this.stopHeartbeat()
     this.socket?.close()
     this.socket = null
     this.setState({ ...this.state, status: 'closed' })
@@ -418,6 +423,8 @@ export class KvatumChatClient {
         this.applyMessageEvent('link-preview-updated', envelope.payload as ChatMessage)
         break
       }
+      case 'heartbeat.pong':
+        break
       case 'chat.error':
         this.captureError(
           new Error(String((envelope.payload as { message?: string }).message ?? 'Chat error'))
@@ -486,6 +493,25 @@ export class KvatumChatClient {
 
   private emitEvent(event: ChatEvent): void {
     this.eventListeners.forEach((listener) => listener(event))
+  }
+
+  private startHeartbeat(socket: WebSocket): void {
+    this.stopHeartbeat()
+    // Чат живет поверх обычного WS за proxy; ping держит idle-соединение открытым.
+    this.heartbeatTimer = setInterval(() => {
+      if (this.socket !== socket || socket.readyState !== this.WebSocketImpl.OPEN) {
+        return
+      }
+      socket.send(JSON.stringify({ type: 'heartbeat.ping' }))
+    }, heartbeatIntervalMs)
+  }
+
+  private stopHeartbeat(): void {
+    if (!this.heartbeatTimer) {
+      return
+    }
+    clearInterval(this.heartbeatTimer)
+    this.heartbeatTimer = null
   }
 }
 
