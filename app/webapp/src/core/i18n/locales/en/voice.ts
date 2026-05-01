@@ -25,6 +25,10 @@ export default defineResource<typeof ruVoice>()({
     directJoinHint: 'If the room exists, we will open the join screen right away.',
     recentTitle: 'Recent meetings',
     recentDescription: 'Quickly return to rooms you opened recently.',
+    openRecentChat: 'Open chat',
+    chatTitle: 'Chat {{roomId}}',
+    chatLoading: 'Opening chat...',
+    closeChat: 'Close chat',
     errors: {
       roomInputRequired: 'Enter a room id or link',
       invalidRoom: 'Enter a valid room id or link',

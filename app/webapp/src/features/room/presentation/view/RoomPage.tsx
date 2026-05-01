@@ -85,6 +85,7 @@ export function RoomPage({ _vm = RoomViewModel }: PropsWithVM<RoomViewModel>): R
 
   useEffect(() => {
     viewModel.onEvent({ type: 'room-opened', roomId })
+    return () => viewModel.onEvent({ type: 'room-closed' })
   }, [roomId, viewModel])
 
   useSharedFlow(viewModel.uiEffect, (effect) => {

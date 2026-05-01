@@ -48,6 +48,7 @@ export type RoomUiState = {
 
 export type RoomUiAction =
   | { readonly type: 'room-opened'; readonly roomId: string }
+  | { readonly type: 'room-closed' }
   | { readonly type: 'go-home-pressed' }
   | { readonly type: 'prejoin-completed' }
   | { readonly type: 'microphone-toggled' }

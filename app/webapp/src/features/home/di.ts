@@ -9,6 +9,13 @@ import { ValidateRoomIdInputUseCase } from './domain/usecases/ValidateRoomIdInpu
 import { recentRoomsRepositoryToken } from './domain/repository/tokens'
 import { HomeViewModel } from './presentation/view_model/HomeViewModel'
 import { CreateRoomUseCase } from '@features/room/domain/usecases/CreateRoomUseCase'
+import { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
+import { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
+import { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
+import { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
+import { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
+import { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
+import { GetUserPreferencesUseCase } from '@capabilities/user-preferences/domain/usecases/GetUserPreferencesUseCase'
 import type { RecentRoomsRepository } from './domain/repository/RecentRoomsRepository'
 
 @Module({ name: 'HomeModule' })
@@ -56,9 +63,28 @@ class HomeModule {
     @Inject(CreateRoomFlowUseCase) createRoom: CreateRoomFlowUseCase,
     @Inject(JoinRoomFlowUseCase) joinRoom: JoinRoomFlowUseCase,
     @Inject(GetRecentRoomsUseCase) getRecentRooms: GetRecentRoomsUseCase,
-    @Inject(SaveRecentRoomVisitUseCase) saveRecentRoomVisit: SaveRecentRoomVisitUseCase
+    @Inject(SaveRecentRoomVisitUseCase) saveRecentRoomVisit: SaveRecentRoomVisitUseCase,
+    @Inject(JoinRoomUseCase) joinRoomSession: JoinRoomUseCase,
+    @Inject(GetUserPreferencesUseCase) getUserPreferences: GetUserPreferencesUseCase,
+    @Inject(ConnectChatUseCase) connectChat: ConnectChatUseCase,
+    @Inject(DisconnectChatUseCase) disconnectChat: DisconnectChatUseCase,
+    @Inject(ObserveChatUseCase) observeChat: ObserveChatUseCase,
+    @Inject(SendChatMessageUseCase) sendChatMessage: SendChatMessageUseCase,
+    @Inject(MarkChatReadUseCase) markChatRead: MarkChatReadUseCase
   ) {
-    return new HomeViewModel(createRoom, joinRoom, getRecentRooms, saveRecentRoomVisit)
+    return new HomeViewModel(
+      createRoom,
+      joinRoom,
+      getRecentRooms,
+      saveRecentRoomVisit,
+      joinRoomSession,
+      getUserPreferences,
+      connectChat,
+      disconnectChat,
+      observeChat,
+      sendChatMessage,
+      markChatRead
+    )
   }
 }
 

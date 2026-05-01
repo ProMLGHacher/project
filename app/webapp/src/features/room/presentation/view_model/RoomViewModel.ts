@@ -162,6 +162,9 @@ export class RoomViewModel extends ViewModel {
       case 'room-opened':
         void this.openRoom(event.roomId)
         break
+      case 'room-closed':
+        void this.closeRoom()
+        break
       case 'go-home-pressed':
         this.effects.emit({ type: 'navigate-home' })
         break
@@ -289,7 +292,11 @@ export class RoomViewModel extends ViewModel {
 
     const current = this.state.value
 
-    if (current.roomId === normalizedRoomId && current.status !== 'failed' && !current.error) {
+    if (
+      current.roomId === normalizedRoomId &&
+      (current.status === 'connecting' || current.status === 'connected' || current.prejoinOpen) &&
+      !current.error
+    ) {
       return
     }
 
@@ -620,6 +627,23 @@ export class RoomViewModel extends ViewModel {
   private async leaveRoom() {
     const roomId = this.state.value.roomId
 
+    this.cleanupRoomRuntime()
+    await this.clearJoinSessionUseCase.execute(roomId)
+
+    this.updateState(() => initialRoomState)
+    this.effects.emit({ type: 'navigate-home' })
+  }
+
+  private async closeRoom() {
+    const roomId = this.state.value.roomId
+    this.cleanupRoomRuntime()
+    if (roomId) {
+      await this.clearJoinSessionUseCase.execute(roomId)
+    }
+    this.updateState(() => initialRoomState)
+  }
+
+  private cleanupRoomRuntime() {
     this.requestGuards.invalidate(
       'openRoom',
       'enterRoom',
@@ -630,13 +654,14 @@ export class RoomViewModel extends ViewModel {
     )
     this.latestDiagnostics = null
     this.lastConferenceSoundParticipants = null
+    if (this.chatHighlightTimer) {
+      window.clearTimeout(this.chatHighlightTimer)
+      this.chatHighlightTimer = null
+    }
 
     this.leaveRoomUseCase.execute()
     this.stopVoiceActivityUseCase.execute()
     this.disconnectChatUseCase.execute()
-    await this.clearJoinSessionUseCase.execute(roomId)
-
-    this.effects.emit({ type: 'navigate-home' })
   }
 
   private async sendChatMessage() {
@@ -778,6 +803,10 @@ export class RoomViewModel extends ViewModel {
   }
 
   private applyObservedSession(state: RoomUiState, session: RtcSession): RoomUiState {
+    if (!state.roomId) {
+      return state
+    }
+
     // Observable может отдать старую RTC-сессию уже после открытия другой комнаты.
     if (state.roomId && session.roomId && state.roomId !== session.roomId) {
       return state

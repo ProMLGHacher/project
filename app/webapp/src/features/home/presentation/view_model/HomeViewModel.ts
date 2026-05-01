@@ -1,4 +1,4 @@
-import { MutableSharedFlow, MutableStateFlow, ViewModel } from '@kvt/core'
+import { CompositeDisposable, MutableSharedFlow, MutableStateFlow, ViewModel } from '@kvt/core'
 import {
   initialHomeState,
   type HomeUiAction,
@@ -10,6 +10,13 @@ import type { CreateRoomFlowUseCase } from '@features/home/domain/usecases/Creat
 import type { GetRecentRoomsUseCase } from '@features/home/domain/usecases/GetRecentRoomsUseCase'
 import type { JoinRoomFlowUseCase } from '@features/home/domain/usecases/JoinRoomFlowUseCase'
 import type { SaveRecentRoomVisitUseCase } from '@features/home/domain/usecases/SaveRecentRoomVisitUseCase'
+import type { ConnectChatUseCase } from '@capabilities/chat/domain/usecases/ConnectChatUseCase'
+import type { DisconnectChatUseCase } from '@capabilities/chat/domain/usecases/DisconnectChatUseCase'
+import type { MarkChatReadUseCase } from '@capabilities/chat/domain/usecases/MarkChatReadUseCase'
+import type { ObserveChatUseCase } from '@capabilities/chat/domain/usecases/ObserveChatUseCase'
+import type { SendChatMessageUseCase } from '@capabilities/chat/domain/usecases/SendChatMessageUseCase'
+import type { GetUserPreferencesUseCase } from '@capabilities/user-preferences/domain/usecases/GetUserPreferencesUseCase'
+import type { JoinRoomUseCase } from '@features/room/domain/usecases/JoinRoomUseCase'
 
 export class HomeViewModel extends ViewModel {
   private readonly state = new MutableStateFlow<HomeUiState>(initialHomeState)
@@ -22,10 +29,36 @@ export class HomeViewModel extends ViewModel {
     private readonly createRoomFlowUseCase: CreateRoomFlowUseCase,
     private readonly joinRoomFlowUseCase: JoinRoomFlowUseCase,
     private readonly getRecentRoomsUseCase: GetRecentRoomsUseCase,
-    private readonly saveRecentRoomVisitUseCase: SaveRecentRoomVisitUseCase
+    private readonly saveRecentRoomVisitUseCase: SaveRecentRoomVisitUseCase,
+    private readonly joinRoomUseCase: JoinRoomUseCase,
+    private readonly getUserPreferencesUseCase: GetUserPreferencesUseCase,
+    private readonly connectChatUseCase: ConnectChatUseCase,
+    private readonly disconnectChatUseCase: DisconnectChatUseCase,
+    private readonly observeChatUseCase: ObserveChatUseCase,
+    private readonly sendChatMessageUseCase: SendChatMessageUseCase,
+    private readonly markChatReadUseCase: MarkChatReadUseCase
   ) {
     super()
     void this.loadRecentRooms()
+  }
+
+  protected override onInit() {
+    const disposables = new CompositeDisposable()
+    disposables.add(
+      this.observeChatUseCase.execute().subscribe((chat) => {
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: {
+            ...state.chatDrawer,
+            status: chat.status,
+            messages: chat.messages,
+            error: chat.lastError,
+            loading: state.chatDrawer.loading && chat.status !== 'connected'
+          }
+        }))
+      })
+    )
+    return disposables
   }
 
   onEvent(event: HomeUiAction) {
@@ -35,6 +68,21 @@ export class HomeViewModel extends ViewModel {
         break
       case 'recent-room-pressed':
         void this.openRecentRoom(event.roomId)
+        break
+      case 'recent-chat-pressed':
+        void this.openRecentChat(event.roomId)
+        break
+      case 'chat-drawer-closed':
+        this.closeChatDrawer()
+        break
+      case 'chat-draft-changed':
+        this.state.update((state) => ({
+          ...state,
+          chatDrawer: { ...state.chatDrawer, draft: event.value }
+        }))
+        break
+      case 'chat-message-sent':
+        void this.sendChatMessage()
         break
       case 'create-room-pressed':
         void this.createRoom()
@@ -139,6 +187,123 @@ export class HomeViewModel extends ViewModel {
   private async rememberRoom(roomId: string) {
     const recentRooms = await this.saveRecentRoomVisitUseCase.execute({ roomId })
     this.state.update((state) => ({ ...state, recentRooms }))
+  }
+
+  private async openRecentChat(roomId: string) {
+    this.disconnectChatUseCase.execute()
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: {
+        ...state.chatDrawer,
+        open: true,
+        roomId,
+        status: 'connecting',
+        messages: [],
+        draft: '',
+        loading: true,
+        error: null
+      }
+    }))
+
+    const preferences = await this.getUserPreferencesUseCase.execute()
+    const displayName = preferences.displayName?.trim() || 'Гость'
+    const session = await this.joinRoomUseCase.execute({
+      roomId,
+      displayName,
+      micEnabled: false,
+      cameraEnabled: false,
+      role: 'participant'
+    })
+
+    if (!session.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: {
+          ...state.chatDrawer,
+          loading: false,
+          status: 'failed',
+          error: homeJoinErrorMessage(session.error.type)
+        }
+      }))
+      return
+    }
+
+    if (!session.value.chatUrl || !session.value.chatToken || !session.value.chatChannelId) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: {
+          ...state.chatDrawer,
+          loading: false,
+          status: 'failed',
+          error: 'Chat is not available for this room'
+        }
+      }))
+      return
+    }
+
+    await this.rememberRoom(session.value.roomId)
+    const result = await this.connectChatUseCase.execute({
+      chatUrl: session.value.chatUrl,
+      chatToken: session.value.chatToken,
+      chatChannelId: session.value.chatChannelId
+    })
+
+    if (!result.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: {
+          ...state.chatDrawer,
+          loading: false,
+          status: 'failed',
+          error: result.error.message ?? result.error.type
+        }
+      }))
+      return
+    }
+
+    await this.markLatestChatMessageRead()
+  }
+
+  private closeChatDrawer() {
+    this.disconnectChatUseCase.execute()
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: initialHomeState.chatDrawer
+    }))
+  }
+
+  private async sendChatMessage() {
+    const draft = this.state.value.chatDrawer.draft.trim()
+    if (!draft) {
+      return
+    }
+
+    this.state.update((state) => ({
+      ...state,
+      chatDrawer: { ...state.chatDrawer, draft: '', error: null }
+    }))
+
+    const result = await this.sendChatMessageUseCase.execute({ markdown: draft })
+    if (!result.ok) {
+      this.state.update((state) => ({
+        ...state,
+        chatDrawer: {
+          ...state.chatDrawer,
+          draft,
+          error: result.error.message ?? result.error.type
+        }
+      }))
+      return
+    }
+
+    await this.markLatestChatMessageRead()
+  }
+
+  private async markLatestChatMessageRead() {
+    const latest = this.state.value.chatDrawer.messages.at(-1)
+    if (latest) {
+      await this.markChatReadUseCase.execute(latest.id)
+    }
   }
 }
 

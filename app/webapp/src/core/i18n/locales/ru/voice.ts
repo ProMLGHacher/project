@@ -22,6 +22,10 @@ export default {
     directJoinHint: 'Если комната существует, сразу откроем экран входа.',
     recentTitle: 'Последние встречи',
     recentDescription: 'Быстрый вход в комнаты, которые вы открывали недавно.',
+    openRecentChat: 'Открыть чат',
+    chatTitle: 'Чат {{roomId}}',
+    chatLoading: 'Открываем чат...',
+    closeChat: 'Закрыть чат',
     errors: {
       roomInputRequired: 'Введите id комнаты или ссылку',
       invalidRoom: 'Введите корректный id комнаты или ссылку',

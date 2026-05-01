@@ -110,46 +110,62 @@ export function JoinRoomCard({
 
 export interface RecentRoomsCardProps {
   readonly rooms: readonly RecentRoom[]
+  readonly onOpenChat: (roomId: string) => void
   readonly onOpen: (roomId: string) => void
   readonly t: VoiceT
 }
 
-export function RecentRoomsCard({ rooms, onOpen, t }: RecentRoomsCardProps) {
+export function RecentRoomsCard({ rooms, onOpenChat, onOpen, t }: RecentRoomsCardProps) {
   if (rooms.length === 0) {
     return null
   }
 
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface shadow-sm shadow-black/5">
-      <CardContent className="grid gap-3 p-4 sm:p-5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">{t('home.recentTitle')}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t('home.recentDescription')}</p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {rooms.map((room) => (
+    <section className="mx-auto grid max-w-3xl gap-2 px-1">
+      <h2 className="px-2 text-sm font-semibold text-muted-foreground">{t('home.recentTitle')}</h2>
+      <div className="grid">
+        {rooms.map((room) => (
+          <div
+            key={room.roomId}
+            className="group grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent"
+          >
             <button
-              key={room.roomId}
-              className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-primary/60 hover:bg-accent"
+              className="min-w-0 truncate text-left text-sm font-medium text-foreground"
               type="button"
               onClick={() => onOpen(room.roomId)}
             >
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-foreground">
-                  {room.roomId}
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {formatRecentVisit(room.visitedAt)}
-                </span>
-              </span>
-              <span className="shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary">
-                {'>'}
-              </span>
+              {room.roomId}
             </button>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+              {formatRecentVisit(room.visitedAt)}
+            </span>
+            <button
+              aria-label={t('home.openRecentChat')}
+              className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+              title={t('home.openRecentChat')}
+              type="button"
+              onClick={() => onOpenChat(room.roomId)}
+            >
+              <ChatIcon />
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ChatIcon() {
+  return (
+    <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M7.5 18.5 4 21v-4.5A8 8 0 0 1 3 12C3 7.6 7 4 12 4s9 3.6 9 8-4 8-9 8a10.4 10.4 0 0 1-4.5-1.5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path d="M8 11.5h8M8 14.5h5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    </svg>
   )
 }
 

@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useSharedFlow, useStateFlow, useViewModel, type PropsWithVM } from '@kvt/react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '@core/design-system'
 import { HomeViewModel } from '../view_model/HomeViewModel'
 import { CreateRoomCard, JoinRoomCard, RecentRoomsCard } from './HomeCards'
+import { HomeChatDrawer } from './HomeChatDrawer'
 
 export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): ReactNode {
   const viewModel = useViewModel(_vm)
@@ -12,6 +13,10 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
   const navigate = useNavigate()
   const { t } = useTranslation('voice')
   const toasts = useToast()
+
+  useEffect(() => {
+    return () => viewModel.onEvent({ type: 'chat-drawer-closed' })
+  }, [viewModel])
 
   useSharedFlow(viewModel.uiEffect, (effect) => {
     switch (effect.type) {
@@ -53,10 +58,18 @@ export function HomePage({ _vm = HomeViewModel }: PropsWithVM<HomeViewModel>): R
           <RecentRoomsCard
             rooms={uiState.recentRooms}
             t={t}
+            onOpenChat={(roomId) => viewModel.onEvent({ type: 'recent-chat-pressed', roomId })}
             onOpen={(roomId) => viewModel.onEvent({ type: 'recent-room-pressed', roomId })}
           />
         </div>
       </div>
+      <HomeChatDrawer
+        chat={uiState.chatDrawer}
+        t={t}
+        onClose={() => viewModel.onEvent({ type: 'chat-drawer-closed' })}
+        onDraftChange={(value) => viewModel.onEvent({ type: 'chat-draft-changed', value })}
+        onSend={() => viewModel.onEvent({ type: 'chat-message-sent' })}
+      />
     </section>
   )
 }
