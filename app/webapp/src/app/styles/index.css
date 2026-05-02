@@ -126,6 +126,52 @@
     animation-delay: 520ms;
   }
 
+  .conference-stage-viewport {
+    container-type: size;
+    display: grid;
+    place-items: center;
+    overscroll-behavior: contain;
+  }
+
+  .conference-stage-measure {
+    box-sizing: border-box;
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    padding: 0.5rem;
+    width: 100%;
+    place-items: center;
+  }
+
+  .conference-stage-grid {
+    --stage-gap: 0.5rem;
+    --stage-padding: 1rem;
+    --stage-content-height: calc(100cqh - var(--stage-padding));
+    --stage-content-width: calc(100cqw - var(--stage-padding));
+    --stage-height-bound-width: calc(
+      (
+          var(--stage-content-height) - (var(--stage-rows) - 1) * var(--stage-gap)
+        ) * 16 / 9 * var(--stage-cols) / var(--stage-rows) +
+        (var(--stage-cols) - 1) * var(--stage-gap)
+    );
+    display: grid;
+    gap: var(--stage-gap);
+    grid-template-columns: repeat(var(--stage-cols), minmax(0, 1fr));
+    width: min(100%, var(--stage-content-width), var(--stage-height-bound-width));
+  }
+
+  .conference-stage-grid-overflow {
+    width: 100%;
+  }
+
+  @media (max-width: 767px) {
+    .conference-stage-grid {
+      --stage-cols: 1 !important;
+      --stage-rows: 1 !important;
+      width: 100%;
+    }
+  }
+
   @keyframes kvatum-loader-breathe {
     0%,
     100% {

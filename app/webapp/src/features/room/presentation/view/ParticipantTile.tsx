@@ -31,7 +31,7 @@ export const ParticipantTile = memo(function ParticipantTile({
   return (
     <Card
       className={cn(
-        'overflow-hidden rounded-lg bg-surface text-foreground shadow-none transition-all duration-300 [contain:layout_paint_style]',
+        'aspect-video w-full overflow-hidden rounded-lg bg-surface text-foreground shadow-none transition-all duration-300 [contain:layout_paint_style]',
         tile.kind === 'screen'
           ? 'border-border bg-surface ring-1 ring-info/25'
           : speaking
@@ -39,22 +39,13 @@ export const ParticipantTile = memo(function ParticipantTile({
             : 'border-border',
         tile.kind !== 'screen' &&
           !tile.audioOn &&
-          'border-destructive/45 ring-1 ring-destructive/20',
-        pinned && 'md:col-span-2 xl:col-span-2'
+          'border-destructive/45 ring-1 ring-destructive/20'
       )}
     >
       <div
         ref={fullscreenRef}
         className={cn(
-          'relative overflow-hidden bg-surface transition-all duration-300 [contain:layout_paint_style]',
-          tile.kind === 'screen'
-            ? pinned
-              ? 'aspect-[16/9] min-h-[22rem]'
-              : 'aspect-[16/9]'
-            : pinned
-              ? 'aspect-[16/9] min-h-[20rem]'
-              : 'aspect-video',
-          tile.kind === 'presence' && 'min-h-[15rem]',
+          'relative h-full min-h-0 overflow-hidden bg-surface transition-all duration-300 [contain:layout_paint_style]',
           tile.kind === 'screen' && 'm-1 rounded-md border border-border bg-background'
         )}
       >

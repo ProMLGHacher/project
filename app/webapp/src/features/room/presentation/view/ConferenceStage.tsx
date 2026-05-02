@@ -1,6 +1,6 @@
-import { Fragment, memo, useMemo } from 'react'
+import { Fragment, memo, useMemo, type CSSProperties } from 'react'
 import type { TFunction } from 'i18next'
-import { Empty, ScrollArea } from '@core/design-system'
+import { Empty, ScrollArea, cn } from '@core/design-system'
 import type { RtcMediaStreams } from '@capabilities/rtc/domain/model'
 import type { Participant } from '@features/room/domain/model/Participant'
 import { ParticipantAudio } from './ParticipantAudio'
@@ -69,20 +69,39 @@ export const ConferenceStage = memo(function ConferenceStage({
     )
   }
 
+  const layout = getMeetStageLayout(sortedTiles.length)
+  const gridStyle = {
+    '--stage-cols': layout.columns,
+    '--stage-rows': layout.rows
+  } as CSSProperties
+
   return (
-    <div className="grid min-h-0 gap-3 [contain:layout_paint_style]">
-      <ScrollArea className="min-h-0 rounded-lg bg-surface p-2 shadow-xl [contain:layout_paint_style]">
-        <div className="grid auto-rows-fr gap-2 [contain:layout_paint_style] md:grid-cols-2 xl:grid-cols-3">
-          {sortedTiles.map((tile) => (
-            <ParticipantTile
-              key={tile.id}
-              pinned={tile.id === pinnedTileId}
-              speaking={speakingParticipantIds.includes(tile.participant.id)}
-              t={t}
-              tile={tile}
-              onPin={onPin}
-            />
-          ))}
+    <div className="grid h-full min-h-0 gap-3 [contain:layout_paint_style]">
+      <ScrollArea
+        className={cn(
+          'conference-stage-viewport h-full min-h-0 rounded-lg bg-surface shadow-xl [contain:layout_paint_style]',
+          layout.overflow ? 'overflow-auto' : 'overflow-hidden'
+        )}
+      >
+        <div className="conference-stage-measure">
+          <div
+            className={cn(
+              'conference-stage-grid [contain:layout_paint_style]',
+              layout.overflow && 'conference-stage-grid-overflow'
+            )}
+            style={gridStyle}
+          >
+            {sortedTiles.map((tile) => (
+              <ParticipantTile
+                key={tile.id}
+                pinned={tile.id === pinnedTileId}
+                speaking={speakingParticipantIds.includes(tile.participant.id)}
+                t={t}
+                tile={tile}
+                onPin={onPin}
+              />
+            ))}
+          </div>
         </div>
       </ScrollArea>
 
@@ -119,6 +138,23 @@ export const ConferenceStage = memo(function ConferenceStage({
     </div>
   )
 }, areConferenceStagePropsEqual)
+
+type MeetStageLayout = {
+  readonly columns: number
+  readonly rows: number
+  readonly overflow: boolean
+}
+
+function getMeetStageLayout(tileCount: number): MeetStageLayout {
+  if (tileCount <= 1) return { columns: 1, rows: 1, overflow: false }
+  if (tileCount === 2) return { columns: 2, rows: 1, overflow: false }
+  if (tileCount <= 4) return { columns: 2, rows: 2, overflow: false }
+  if (tileCount <= 6) return { columns: 3, rows: 2, overflow: false }
+  if (tileCount <= 9) return { columns: 3, rows: 3, overflow: false }
+  if (tileCount <= 12) return { columns: 4, rows: 3, overflow: false }
+
+  return { columns: 4, rows: Math.ceil(tileCount / 4), overflow: true }
+}
 
 function areConferenceStagePropsEqual(
   previous: ConferenceStageProps,
