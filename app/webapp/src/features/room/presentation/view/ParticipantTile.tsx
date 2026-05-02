@@ -11,6 +11,7 @@ export interface ParticipantTileProps {
   readonly tile: ParticipantMediaTile
   readonly speaking: boolean
   readonly pinned: boolean
+  readonly canPin: boolean
   readonly onPin: (tileId: string) => void
   readonly t: VoiceT
 }
@@ -19,6 +20,7 @@ export const ParticipantTile = memo(function ParticipantTile({
   tile,
   speaking,
   pinned,
+  canPin,
   onPin,
   t
 }: ParticipantTileProps) {
@@ -108,13 +110,15 @@ export const ParticipantTile = memo(function ParticipantTile({
             {pinned && <Badge variant="success">{t('room.participant.pinned')}</Badge>}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <button
-              className="rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent"
-              onClick={() => onPin(tile.id)}
-              type="button"
-            >
-              {pinned ? t('room.participant.unpin') : t('room.participant.pin')}
-            </button>
+            {canPin && (
+              <button
+                className="rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent"
+                onClick={() => onPin(tile.id)}
+                type="button"
+              >
+                {pinned ? t('room.participant.unpin') : t('room.participant.pin')}
+              </button>
+            )}
             {tile.kind === 'screen' && (
               <button
                 className="rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent"
@@ -178,6 +182,7 @@ function areParticipantTilePropsEqual(
     previous.tile.awaitingMedia === next.tile.awaitingMedia &&
     previous.speaking === next.speaking &&
     previous.pinned === next.pinned &&
+    previous.canPin === next.canPin &&
     previous.t === next.t &&
     previous.onPin === next.onPin
   )

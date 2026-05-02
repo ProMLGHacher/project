@@ -70,6 +70,13 @@ export const ConferenceStage = memo(function ConferenceStage({
   }
 
   const layout = getMeetStageLayout(sortedTiles.length)
+  const canPinTiles = sortedTiles.length > 1
+  const pinnedTile = pinnedTileId && canPinTiles
+    ? (sortedTiles.find((tile) => tile.id === pinnedTileId) ?? null)
+    : null
+  const secondaryTiles = pinnedTile
+    ? sortedTiles.filter((tile) => tile.id !== pinnedTile.id)
+    : sortedTiles
   const gridStyle = {
     '--stage-cols': layout.columns,
     '--stage-rows': layout.rows
@@ -77,33 +84,67 @@ export const ConferenceStage = memo(function ConferenceStage({
 
   return (
     <div className="grid h-full min-h-0 gap-3 [contain:layout_paint_style]">
-      <ScrollArea
-        className={cn(
-          'conference-stage-viewport h-full min-h-0 rounded-lg bg-surface shadow-xl [contain:layout_paint_style]',
-          layout.overflow ? 'overflow-auto' : 'overflow-hidden'
-        )}
-      >
-        <div className="conference-stage-measure">
-          <div
-            className={cn(
-              'conference-stage-grid [contain:layout_paint_style]',
-              layout.overflow && 'conference-stage-grid-overflow'
-            )}
-            style={gridStyle}
-          >
-            {sortedTiles.map((tile) => (
+      {pinnedTile ? (
+        <div className="conference-stage-pinned h-full min-h-0 rounded-lg bg-surface shadow-xl [contain:layout_paint_style]">
+          <div className="conference-stage-pinned-main">
+            <div className="conference-stage-pinned-tile">
               <ParticipantTile
-                key={tile.id}
-                pinned={tile.id === pinnedTileId}
-                speaking={speakingParticipantIds.includes(tile.participant.id)}
+                canPin={canPinTiles}
+                pinned
+                speaking={speakingParticipantIds.includes(pinnedTile.participant.id)}
                 t={t}
-                tile={tile}
+                tile={pinnedTile}
                 onPin={onPin}
               />
-            ))}
+            </div>
           </div>
+
+          {secondaryTiles.length > 0 && (
+            <ScrollArea className="conference-stage-pinned-strip">
+              {secondaryTiles.map((tile) => (
+                <ParticipantTile
+                  canPin={canPinTiles}
+                  key={tile.id}
+                  pinned={false}
+                  speaking={speakingParticipantIds.includes(tile.participant.id)}
+                  t={t}
+                  tile={tile}
+                  onPin={onPin}
+                />
+              ))}
+            </ScrollArea>
+          )}
         </div>
-      </ScrollArea>
+      ) : (
+        <ScrollArea
+          className={cn(
+            'conference-stage-viewport h-full min-h-0 rounded-lg bg-surface shadow-xl [contain:layout_paint_style]',
+            layout.overflow ? 'overflow-auto' : 'overflow-hidden'
+          )}
+        >
+          <div className="conference-stage-measure">
+            <div
+              className={cn(
+                'conference-stage-grid [contain:layout_paint_style]',
+                layout.overflow && 'conference-stage-grid-overflow'
+              )}
+              style={gridStyle}
+            >
+              {secondaryTiles.map((tile) => (
+                <ParticipantTile
+                  canPin={canPinTiles}
+                  key={tile.id}
+                  pinned={false}
+                  speaking={speakingParticipantIds.includes(tile.participant.id)}
+                  t={t}
+                  tile={tile}
+                  onPin={onPin}
+                />
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
+      )}
 
       <div className="contents">
         {participants.map((participant) => {
